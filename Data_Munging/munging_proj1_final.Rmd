@@ -1,0 +1,482 @@
+---
+title: "College Scorecard"
+author: "Julian Palazzo and Miles Tweed"
+output: pdf_document
+---
+
+```{r, include=FALSE, echo=FALSE}
+library(data.table)
+library(ggplot2)
+library(dplyr)
+
+working.dir <- "ENTER THE WORKING DIRECTORY PATH"
+proj.dir <- "Final_Group_Proj"
+dataset.dir <- "Datasets"
+```
+
+# Data and Imports
+
+The College Scorecard data set was developed to track student outcomes based on the metrics of the institutions. There are 13 csv files, each representing one year of data for the collection of schools. We began by importing all of the data for each year as separate data frames with an addition column that contained the year. We Then combined them into one data frame in order measure the quality of the data.
+```{r}
+
+# Imports
+df_97 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED1996_97_PP.csv"), 
+               na.strings = c("PrivacySuppressed", "NULL"))
+df_00 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED1999_00_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_01 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2000_01_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_02 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2001_02_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_04 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2003_04_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_06 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2005_06_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_07 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2006_07_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_10 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2009_10_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_12 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2011_12_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_13 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2012_13_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_15 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2014_15_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_18 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2017_18_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+df_19 <- read.csv(file.path(working.dir, dataset.dir,
+                          "/CollegeScorecard_Raw_Data/MERGED2018_19_PP.csv"), 
+                  na.strings = c("PrivacySuppressed", "NULL"))
+
+#Adding the Year data
+df_97['YR'] <- 1997
+df_00['YR'] <- 2000
+df_01['YR'] <- 2001
+df_02['YR'] <- 2002
+df_04['YR'] <- 2004
+df_06['YR'] <- 2006
+df_07['YR'] <- 2007
+df_10['YR'] <- 2010
+df_12['YR'] <- 2012
+df_13['YR'] <- 2013
+df_15['YR'] <- 2015
+df_18['YR'] <- 2018
+df_19['YR'] <- 2019
+
+# Create a copy of original df19  ######
+df19_orig <- df_19
+
+#Removing Temp DF
+#Full Dataset
+df <- merge(df_19,df_18, all = T)
+rm(df_18)
+rm(df_19)
+df <- merge(df, df_15, all = T)
+rm(df_15)
+df <- merge(df, df_13, all = T)
+rm(df_13)
+df <- merge(df, df_12, all = T)
+rm(df_12)
+df <- merge(df, df_10, all = T)
+rm(df_10)
+df <- merge(df, df_07, all = T)
+rm(df_07)
+df <- merge(df, df_06, all = T)
+rm(df_06)
+df <- merge(df, df_04, all = T)
+rm(df_04)
+df <- merge(df, df_02, all = T)
+rm(df_02)
+df <- merge(df, df_01, all = T)
+rm(df_01)
+df <- merge(df, df_00, all = T)
+rm(df_00)
+df <- merge(df, df_97, all = T)
+rm(df_97)
+
+df_orig <- df
+```
+
+# Measuring Data Quality
+## Numeric NULL value assessment
+
+We created a function that quantifies the missing data for each column as a percentage.  The function separates the results into columns for which there is no missing data and column which have missing data.  We quantified the amount of missing information overall as well as for each year. It was apparent that some variables were added and/or dropped over time.
+```{r}
+#          MEASURING DATA QUALITY
+
+data_quality <- function(df){
+  # find the number of missing values in each column 
+  find.missing <- sapply(df, function(x) round(sum(is.na(x)/length(x)), digits = 3)*100)
+  
+  # this function counts the NA values in each column
+  # if the number of NA values is zero, we have a full column
+  # returns the number of NA values for each column and the columns with 
+  # no missing values in two separate lists
+
+  
+  return(list(not_missing_values = find.missing[find.missing == 0], 
+              missing_values=sort(find.missing[find.missing != 0], 
+                                  decreasing = FALSE))) 
+}
+
+qual.metrics <- data_quality(df)
+
+tot.gt25 <- qual.metrics$missing_values[qual.metrics$missing_values <= 25]
+tot.gt50 <- qual.metrics$missing_values[qual.metrics$missing_values <= 50]
+tot.gt80 <- qual.metrics$missing_values[qual.metrics$missing_values <= 80]
+tot.gt90 <- qual.metrics$missing_values[qual.metrics$missing_values <= 90]
+
+# Total number of variables with and without some missing data
+print(paste("Overall:",length(qual.metrics$missing_values), "variables with missing data"))
+print(paste("Overall:",length(tot.gt25),"missing less than 25%"))
+print(paste("Overall:",length(tot.gt50),"missing less than 50%"))
+print(paste("Overall:",length(tot.gt80),"missing less than 80%"))
+print(paste("Overall:",length(tot.gt90),"missing less than 90%"))
+
+years <- c(1997, 2000, 2001, 2002, 2004, 2006, 
+           2007, 2010, 2012, 2013, 2015, 2018, 
+           2019)
+
+for (year in years){
+  qual <- data_quality(df[df$YR == year,])
+  lt25 <- qual$missing_values[qual$missing_values <= 25]
+  lt50 <- qual$missing_values[qual$missing_values <= 50]
+  lt80 <- qual$missing_values[qual$missing_values <= 80]
+  lt90 <- qual$missing_values[qual$missing_values <= 90]
+  print(paste(year, ":", length(qual$not_missing_values), "not missing data"))
+  print(paste(year, ":", length(lt25),"missing 25% or less"))
+  print(paste(year, ":", length(lt50),"missing 50% or less"))
+  print(paste(year, ":", length(lt80),"missing 80% or less"))
+  print(paste(year, ":", length(lt90),"missing 90% or less"))
+}
+
+```
+
+## Graphical overview of NULL values
+
+
+![heatmap of Null values](file.path(base.dir,proj.dir,"fulldf_na.png"))
+
+We used the following python script to generate a heat map in which every NULL value is in red. we were able to discern the region where data was added or dropped.
+```
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pathlib import Path
+
+dataDir = Path("PATH TO DATASET")
+
+df_97 = pd.read_csv(dataDir / "MERGED1996_97_PP.csv")
+df_00 = pd.read_csv(dataDir / "MERGED1999_00_PP.csv")
+df_01 = pd.read_csv(dataDir / "MERGED2000_01_PP.csv")
+df_02 = pd.read_csv(dataDir / "MERGED2001_02_PP.csv")
+df_04 = pd.read_csv(dataDir / "MERGED2003_04_PP.csv")
+df_06 = pd.read_csv(dataDir / "MERGED2005_06_PP.csv")
+df_07 = pd.read_csv(dataDir / "MERGED2006_07_PP.csv")
+df_10 = pd.read_csv(dataDir / "MERGED2009_10_PP.csv")
+df_12 = pd.read_csv(dataDir / "MERGED2011_12_PP.csv")
+df_13 = pd.read_csv(dataDir / "MERGED2012_13_PP.csv")
+df_15 = pd.read_csv(dataDir / "MERGED2014_15_PP.csv")
+df_18 = pd.read_csv(dataDir / "MERGED2017_18_PP.csv")
+df_19 = pd.read_csv(dataDir / "MERGED2018_19_PP.csv")
+df = pd.concat([df_19, df_18, df_15, df_13,df_12, df_10,df_07, df_06,
+               df_04, df_02,df_01, df_00,df_97], ignore_index=True)
+del([df_19, df_18, df_15, df_13,df_12, df_10,df_07, df_06,
+               df_04, df_02,df_01, df_00,df_97])
+plt.figure(figsize=(30,60))
+sns.heatmap(df.isna(),cmap = 'coolwarm')
+plt.tight_layout()
+plt.savefig("fulldf_na.png")
+```
+
+
+## Clean and encode
+
+The following are functions to remove column that have a specified percentage of missing values and to convert numeric data in column that are listed as categorical into strings.
+```{r}
+remove.na.col <- function(df,p) {
+  # Removes columns that are more than p% NA values
+  to.del = vector()
+  for (col in names(df)) {
+    num.na <- sum(is.na(df[, col]))
+    total <- length(df[, col])
+    if (num.na/total*100 >= p) {
+      to.del <- append(to.del, col)
+    }
+  }
+  return(df[, !(names(df) %in% to.del)])
+}
+
+# Columns that are categorical according to dictionary
+cat.col <- c("MAIN", "PREDDEG", "HIGHDEG", "CONTROL", 
+             "ST_FIPS", "REGION", "LOCALE", "LOCALE2", 
+             "CCBASIC", "CCUGPROF", "CCSIZSET", "HBCU", 
+             "PBI", "ANNHI", "TRIBAL", "AANAPII", 
+             "HSI", "NANTI", "MENONLY", "WOMENONLY", 
+             "RELAFFIL", "CIP01CERT1", "CIP01CERT2", 
+             "CIP01ASSOC", "DISTANCEONLY", "CURROPER", 
+             "ICLEVEL", "OPENADMP", "SCHTYPE", "YR")
+
+# Converts numeric data to strings for columns that are listed as categorical
+to.cat <- function(df,cols){
+  for (col in names(df)){
+    if (col %in% cols) {
+      for (i in length(df[,col])){
+         df[i,col] <- toString(df[i,col]) 
+      }
+    }
+  }
+  return(df)
+}
+```
+
+
+## Datasets for analysis
+
+In the following code chunks we generated, cleaned, and encoded specific data set that will be used later on in the analysis. We decided to look at variables with at least 75% of of available data.
+
+### Latest dataset
+
+```{r}
+
+df19 <- remove.na.col(df_orig[df_orig$YR == 2019,], 25)
+
+df19 <- to.cat(df19, cat.col)
+```
+
+
+
+### The full dataset
+
+The full data set was used to look at certain variables over time. Again we choose 25% as the threshold for missing data.
+```{r}
+df <- remove.na.col(df, 25)
+
+df <- to.cat(df, cat.col)
+```
+
+
+### 2000-2015 Dataset
+
+The data from the years between 2000-2015 had a greater number of variable available for analysis so we created this subset.
+```{r}
+df2 <- remove.na.col(subset(df_orig, YR %in% years[2:11]), 25)
+
+df2 <- to.cat(df2, cat.col)
+``` 
+
+# Data Analysis
+
+## Latest available data
+
+## Histogram of Admission Rates by Region
+
+In order to examine the distributions of admission rates for each region, we created subsets for each of the ten regions from the 2018-2019 dataset. It is important to note that service schools and schools in outlying areas are not geographically related, while the schools in each of other eight regions are geographically related. Consequently, we expect schools that share a close geographic relationship to be more similar than schools that are in distant regions. Here, we compare admission rate distributions for each regional subset. Notably, the distribution for service schools was much narrower compared to those of other regions; service schools were also highly selective compared to schools in other regions. 
+```{r, warning=FALSE}
+df19 <- df19_orig
+
+# subset by region
+service_schools <- subset(df19,  REGION == 0) 
+
+new_england <- subset(df19,  REGION == 1) # CT, ME, MA, NH, RI, VT
+
+mid_east <- subset(df19,  REGION == 2) # DE, DC, MD, NJ, NY, PA
+
+great_lakes <- subset(df19,  REGION == 3) # IL, IN, MI, OH, WI
+
+plains <- subset(df19,  REGION == 4) # IA, KS, MN, MO, NE, ND, SD
+
+southeast <- subset(df19,  REGION == 5) # AL, AR, FL, GA, KY, LA, MS, NC, SC, TN, VA, WV
+
+southwest <- subset(df19,  REGION == 6) # AZ, NM, OK, TX
+
+rocky_mtns <- subset(df19,  REGION == 7) # CO, ID, MY, UT, WY
+
+far_west <- subset(df19,  REGION == 8) # AK, CA, HI, NV, OR, WA
+
+outlying_areas <- subset(df19,  REGION == 9) # AS, FM, GU, MH, MP, PR, PW, VI
+
+
+# histogram of Admission rate distributions for a given region
+hist(as.numeric(service_schools$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Service Schools")
+hist(as.numeric(new_england$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for New England Schools")
+hist(as.numeric(mid_east$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Mid-East Schools")
+hist(as.numeric(great_lakes$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Great Lakes Schools")
+hist(as.numeric(plains$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Plains Schools")
+hist(as.numeric(southeast$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Southeastern Schools")
+hist(as.numeric(southwest$ADM_RATE_ALL), xlab="Admission Rate",
+     main = "Histogram of Admission Rates for Southwestern Schools")
+hist(as.numeric(rocky_mtns$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Rocky Mountains Schools")
+hist(as.numeric(far_west$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Far West Schools")
+hist(as.numeric(outlying_areas$ADM_RATE_ALL), xlab="Admission Rate", 
+     main = "Histogram of Admission Rates for Schools in Outlying Areas")
+```
+
+
+
+## Default outcomes by race and gender
+
+One of the variables that could describe student outcomes was CDR3 which is the load default rate after 3 years.  After removing columns with more that 25% Null values this variable was still available for us to explore.  We first looked at changes in this variable as school demographics change. This could potentially help weed out predatory lending practices.
+```{r, warning=FALSE}
+
+df19 <- df19_orig
+vars <- c("CDR3", "UGDS_WHITE", "UGDS_BLACK", "UGDS_HISP", "UGDS_ASIAN")
+
+df19 <- df19[,vars]
+df19 <- remove.na.col(df19, 25)
+
+d <- melt(df19, id.vars = "CDR3")
+
+ggplot(d, aes(y = CDR3,x = value, col=variable)) + 
+  stat_smooth() + xlab("Percent of School's Population") + 
+  ylab("3yr defaut rate")
+ 
+
+
+df19 <- df19_orig
+vars2 <- c("CDR3", "UGDS_WOMEN", "UGDS_MEN")
+
+df19 <- df19[,vars2]
+df19 <- remove.na.col(df19, 25)
+
+d <- melt(df19, id.vars = "CDR3")
+
+ggplot(d, aes(y = CDR3,x = value, col=variable)) + 
+  stat_smooth() + xlab("Percent Demographic") + 
+  ylab("3yr defaut rate") + xlim(0.5,1)
+
+
+df19 <- df19_orig
+```
+
+## Default rate and demographics by region
+
+We looked the average 3 year default rate by region and found little variation between regions. More variation was present in the demographic make up of the regions, for example, the highest Asian population was found in region 8 which includes AK, CA, HI, NV, OR, WA.  We could also verify at a glance that the, since this data set used a binary gender identifier, the gender demographics were compliments of each other and roughly even. The one peak in the gender demographic plots was in region 0 which represents service schools, including military schools which had a higher proportion of men. 
+
+| Region Name  |  Region Code |  states  |
+|---|---|---|
+|  service_schools | 0 |   |
+| new_england  | 1 |CT, ME, MA, NH, RI, VT|
+| mid_east  | 2 |DE, DC, MD, NJ, NY, PA|
+| great_lakes  | 3 |IL, IN, MI, OH, WI|
+| plains  | 4 |IA, KS, MN, MO, NE, ND, SD|
+| southeast  | 5 |AL, AR, FL, GA, KY, LA, MS, NC, SC, TN, VA, WV|
+| southwest  | 6 |AZ, NM, OK, TX|
+| rocky_mtns  | 7 |CO, ID, MY, UT, WY|
+| far_west  | 8 |AK, CA, HI, NV, OR, WA|
+|  outlying_areas | 9 |   |
+
+
+```{r, warning=FALSE}
+df19 <- df19_orig
+df19 <- remove.na.col(df19, 25)
+df19 <- to.cat(df19, cat.col)
+by.reg <- df19 %>%
+              group_by(REGION) %>%
+                summarise(
+                  DEF_RT = mean(CDR3, na.rm = T),
+                  DEM_WT = mean(UGDS_WHITE, na.rm = T),
+                  DEM_BK = mean(UGDS_BLACK, na.rm = T),
+                  DEM_HSP = mean(UGDS_HISP, na.rm = T),
+                  DEM_AIS = mean(UGDS_ASIAN, na.rm = T),
+                  DEM_AI = mean(UGDS_AIAN, na.rm = T),
+                  DEM_MEN = mean(UGDS_MEN, na.rm = T),
+                  DEM_WOM = mean(UGDS_WOMEN, na.rm = T)
+                )
+
+ggplot(by.reg, aes(x = REGION, y = DEF_RT, fill = REGION)) + 
+  geom_col()
+
+ggplot(by.reg, aes(x = REGION, y = DEM_WT, fill = REGION)) + 
+  geom_col()
+
+ggplot(by.reg, aes(x = REGION, y = DEM_BK, fill = REGION)) + 
+  geom_col()
+
+ggplot(by.reg, aes(x = REGION, y = DEM_HSP, fill = REGION)) + 
+  geom_col()
+
+ggplot(by.reg, aes(x = REGION, y = DEM_AIS, fill = REGION)) + 
+  geom_col()
+
+ggplot(by.reg, aes(x = REGION, y = DEM_AI, fill = REGION)) + 
+  geom_col()
+
+ggplot(by.reg, aes(x = REGION, y = DEM_MEN, fill = REGION)) + 
+  geom_col()
+
+ggplot(by.reg, aes(x = REGION, y = DEM_WOM, fill = REGION)) + 
+  geom_col()
+
+```
+
+## Tuition and school expenses over time
+
+We looked at the net tuition revenue per full-time equivalent student as well as the instructional expenditures per full-time equivalent student, and found that they seemed to correlate to an extent.  Looking at the medians, the expenditures as well as the tuition both follow an increasing trend; however, when looking at the mean, there seems to be some outlier behavior in the early 2000's.
+```{r, warning=FALSE}
+
+# Exploring variables over time
+by.yr <- df %>%
+              group_by(YR) %>%
+                          summarise(
+                            TUIT_MEAN = mean(TUITFTE, na.rm = T),
+                            TUIT_MEDIAN = median(TUITFTE, na.rm = T),
+                            EXP_MEAN = mean(INEXPFTE, na.rm = T),
+                            EXP_MEDIAN = median(INEXPFTE, na.rm = T)
+                          )
+
+ggplot(by.yr, aes(x = YR, y = EXP_MEAN)) + geom_col()
+
+ggplot(by.yr, aes(x = YR, y = EXP_MEDIAN)) + geom_col()
+
+ggplot(by.yr, aes(x = YR, y = TUIT_MEAN)) + geom_col()
+
+ggplot(by.yr, aes(x = YR, y = TUIT_MEDIAN)) + geom_col()
+
+```
+
+
+
+## 2000-2015 Dataset
+
+For the 2000-2015 data set we looked at the 2 year default rate over time (CDR2). The trend was down until around 2008 when there was a steep increase.This observation seems to correspond to the economic downturn that occurred around that time. While the average default rate was higher than the median, the trends among regions were consistent between these two measurements.
+```{r, warning=FALSE}
+
+# Exploring the 2000-2015 dataset over time
+
+by.yr2 <- df2 %>% group_by(YR) %>%
+              summarise(
+                DEF_MEAN = mean(CDR2, na.rm = T),
+                DEF_MEDIAN = median(CDR2, na.rm = T)
+              )
+
+ggplot(by.yr2, aes(x = YR, y = DEF_MEAN)) + 
+  geom_col() + xlab("Year") + ylab("2yr Default Rate mean")
+
+ggplot(by.yr2, aes(x = YR, y = DEF_MEDIAN)) + 
+  geom_col() + xlab("Year") + ylab("2yr Default Rate median")
+
+```
+
+
