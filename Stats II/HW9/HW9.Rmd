@@ -1,0 +1,110 @@
+---
+title: "Homework 9"
+author: "Miles Tweed"
+date: "4/18/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+```
+
+# Problem 1
+
+
+**Part 1**
+
+I am using the King County house price data.  The quantitative response is the house price and the quantitative predictor I chose is sqft\_above and the categorical variable I chose was waterfront which has the values of 'yes' or 'no' indicating is the property is waterfront or not. As shown in the plot below, there is clear indication of interaction between sqft_above and waterfront indicated by the differing slopes.
+
+```{r message=FALSE}
+df <- read_csv('../../Data/kc_house_data.csv')
+
+red.df <- df %>% select(price, sqft_above, waterfront)
+red.df$waterfront <- as_factor(red.df$waterfront)
+levels(red.df$waterfront) <- c('No','Yes')
+ggplot(data = red.df, aes(y = price, x = sqft_above, color = waterfront)) + 
+  geom_smooth(method = 'lm')
+```
+
+**Part 2**
+
+***1)***
+$$\text{price}_i = \beta_0 + \beta_1\cdot \text{sqft}\_\text{above}_i + \beta_2\cdot D_{\text{waterfront},i} +\beta_3\cdot\text{sqft}\_\text{above}_i\cdot D_{\text{waterfront},i}+\epsilon_i,\ \epsilon_i\sim\mathbb{N}(0,\sigma^2)$$
+
+***2)***
+$$\text{price}_i = \left\{\begin{array}{rcl} \beta_0 + \beta_1\cdot \text{sqft}\_\text{above}_i + \epsilon_i &,& i^{th}\text{ is not waterfront}\\ (\beta_0 + \beta_2) + (\beta_1\cdot + \beta_3)\cdot \text{sqft}\_\text{above}_i + \epsilon_i &,& i^{th}\text{ is waterfront} \end{array} \right.$$
+
+The two equations have different intercepts and slopes. In the equation for houses that are not waterfront the intercept is $\beta_0$ whereas in the equation for houses that are waterfront the intercept is $(\beta_0 + \beta_2)$. In the equation for houses that are not waterfront the slope is $\beta_1$ whereas in the equation for houses that are waterfront the slope is $(\beta_1 + \beta_3)$.
+
+***Fill in the blank:*** Interaction terms allow for difference in linear regression slope across the categories.
+
+**Part 3**
+```{r}
+lm.obj <- lm(price ~ sqft_above*waterfront, data=red.df)
+summary(lm.obj)
+```
+
+The extremely low p-value for the interaction term (<2e-16) indicated that the interaction is statistically significant.
+
+**Part 4**
+
+***a.***
+
+$$\hat{\text{price}} = \left\{\begin{array}{rcl} 7.98e4 + 2.53e2\cdot \text{sqft}\_\text{above} &,& i^{th}\text{ is not waterfront}\\ (7.98e4 - 2.11e5) + (2.53e2 + 4.72e2)\cdot \text{sqft}\_\text{above} &,& i^{th}\text{ is waterfront} \end{array} \right.$$
+
+***b.***
+```{r message = FALSE}
+library(effects)
+plot(effect("sqft_above:waterfront", lm.obj))
+```
+
+In the effect display, the slope is much steeper for houses where waterfront is 'Yes'.  This indicates that, on average, an increase in sqft\_above results in a greater increase in price if the house is waterfront.
+
+***Interpretation***
+
+**For slope:** On average, a one square foot increase results in a \$253 increase in home price for houses that are not waterfront. This average per unit change in home price is increased to \$253 +\$472 = \$725 for houses that are waterfront.
+
+**For intercept:** For houses that are zero square feet (empty lots), the base price will be \$79,800 when it is not waterfront and -\$131,200 if it is waterfront. Obviously, this parameter has a nonsensical interpretation.
+
+**Part 5**
+
+On average, waterfront houses that are zero square feet in size will be priced $211,200 less than houses that are not waterfront. This interpretation sounds absurd and certainly not "all-encompassing". This interpretation only focuses on situations where the home is zero square feet (empty lots) which is overly specific and it is very doubtful that waterfront lots would be priced lower that non-waterfront lots on average. We should never rely on interpretations or the significance of the main effects in models with strong interactions because these effects are considered to be marginal to the interaction.
+
+# Problem 2
+
+**Part 1**
+```{r}
+library(ISLR)
+fix(Wage)
+
+ggplot(data = Wage, aes(x = age, y = wage, color = race)) + 
+  geom_smooth(method = 'lm', se = FALSE)
+```
+
+Since the slopes of the fitted line of age and wage are different for the various categories of race we can conclude that there is evidence of interaction between race and age on wage.
+
+**Part 2**
+
+```{r}
+lm.obj.wage = lm(wage~age*race, data=Wage)
+summary(lm.obj.wage)
+
+```
+
+***1)*** $\text{wage}_i = \beta_0 + \beta_1\cdot \text{age}_i + \beta_2\cdot D_{\text{Black},i} + \beta_3\cdot D_{\text{Asian},i} +\beta_4\cdot D_{\text{Other},i}+ \beta_5\cdot\text{age}\cdot D_{\text{Black},i} + \beta_6\cdot\text{age}\cdot D_{\text{Asian},i} +\beta_7\cdot\text{age}\cdot D_{\text{Other},i} + \epsilon_i,\ \epsilon_i\sim\mathbb{N}(0,\sigma^2)$
+
+***2)*** $$\begin{array}{c}H_0:\beta_5=\beta_6=\beta_7=0\\ H_a:\{\text{at least one }\beta_j \ne 0\}, j=5,6,7\end{array}$$
+
+***3)*** $$\text{wage}_i = \beta_0 + \beta_1\cdot \text{age}_i + \beta_2\cdot D_{\text{Black},i} + \beta_3\cdot D_{\text{Asian},i} +\beta_4\cdot D_{\text{Other},i} \epsilon_i,\ \epsilon_i\sim\mathbb{N}(0,\sigma^2)$$
+
+***4)***
+```{r}
+lm.obj.null <- lm(wage~age + race, data = Wage)
+
+anova(lm.obj.null, lm.obj.wage)
+```
+
+5) The value of the F statistic was 1.549 which led to an insignificant p-value of 0.1998. This result leads us to conclude that we should fail to reject the null hypothesis which states that the coefficients of interaction terms between race categories and age should be zero.  This indicates that there is likely not a significant interaction between age and race that affects an individual's wage on average.
+

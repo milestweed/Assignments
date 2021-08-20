@@ -1,0 +1,283 @@
+---
+title: "part 5"
+author: "Miles Tweed"
+date: "12/7/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(boot)
+library(tidyverse)
+library(lubridate)
+proj.dir <- "/home/mtweed/Documents/New_College/year_1/StatInfForDS/Statistical_inference"
+data.dir <- 'Datasets'
+```
+# Data Import
+
+```{r}
+stateCovid <- read.csv(file = file.path(proj.dir, data.dir, "state_covid_data.csv"))
+stateCovid <- stateCovid %>%
+  mutate(date = lubridate::ymd(date))
+
+
+
+stateCovid['month'] <- month(stateCovid$date)
+
+stateCovid['week'] <- week(stateCovid$date)
+
+```
+
+
+# Weekly Dataset
+
+The deathIncrease variable is the number of deaths added per day. We can use the sum to aggregate this data into weekly values.
+
+```{r}
+stateCovidWeekly <- stateCovid %>% 
+  group_by(state,week) %>% 
+  filter(deathIncrease > 0) %>% 
+  select(state, week, deathIncrease) %>% 
+  summarise_at(vars(deathIncrease), funs(sum))
+
+x.mean <- function(x,i) { mean(x$deathIncrease[i])}
+
+wk.samp.pop.avg <- boot(data = stateCovidWeekly, 
+            statistic = x.mean, 
+            R = 10000)
+
+
+bias <- mean(wk.samp.pop.avg$t) - mean(stateCovidWeekly$deathIncrease)
+unbiased.est <- wk.samp.pop.avg$t - bias
+
+hist(unbiased.est, breaks=20)
+
+CI95.full <- c(quantile(unbiased.est, 0.025), 
+              quantile(unbiased.est, 0.975))
+
+hist(wk.samp.pop.avg$t, breaks=20)
+
+pop.wk.avg <- wk.samp.pop.avg$t0
+
+# Unsurprisingly the proportion of values greater than the median is approximately 0.5
+print(paste('Sample population mean deaths per week calculated via bootstrap:',round(pop.wk.avg,2)))
+print('Un-biased confidence interval for sample mean: ')
+print(CI95.full)
+
+t.test()
+```
+
+
+# Subset of states
+
+We wish to analyse the proportion of weeks in which the death increase was above the median. 
+
+```{r}
+states <- stateCovidWeekly[,"state"] %>% unique()
+
+set.seed(12)
+st.sample.1 <- sample(states$state,20)
+
+sam1.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.1)
+```
+
+
+# Inference of population parameter
+
+create an inference of the population parameter. This is proportion of weeks in which the death increase was above the mean or, in other words, the number of weeks in which the increase was greater than the mean divided by the total number of weeks in the sample.
+
+
+```{r}
+
+samp1.wk.avg <- wk.samp1.avg$t0
+
+print('states in sample 1: ')
+print(st.sample.1)
+t.test(sam1.pop$deathIncrease, mu = 131)
+
+
+
+x <- sam1.pop$deathIncrease
+n.trials <- 10000
+n <- 100
+x.bars <-  numeric(n.trials)
+for (j in 1:n.trials){
+  x.samp <- sample(x, n)
+  x.bar <- mean(x.samp)
+  x.sd <- sd(x.samp)
+  x.bars[j] <- (x.bar)
+}
+
+mean(x.bars)
+
+sd(x.bars)
+
+t.test(x.bars, mu = 131)
+
+```
+
+
+
+# Other subsets (Regional)
+
+## North East
+```{r}
+northeast.abb <- c("ME", "NH", "VT", "MA", "RI", "CT", "NY", "PA", "NJ")
+
+set.seed(12)
+st.sample.NE <- sample(northeast.abb,8)
+
+samNE.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.NE)
+
+print('states in North-East sample: ')
+print(st.sample.NE)
+t.test(samNE.pop$deathIncrease, mu = 131)
+
+mu <- mean(stateCovidWeekly$deathIncrease)
+
+x <- samNE.pop$deathIncrease
+n.trials <- 10000
+n <- 100
+x.bars <-  numeric(n.trials)
+for (j in 1:n.trials){
+  x.samp <- sample(x, n)
+  x.bar <- mean(x.samp)
+  x.sd <- sd(x.samp)
+  x.bars[j] <- (x.bar)
+}
+
+mean(x.bars)
+
+sd(x.bars)
+
+
+t.test(x.bars, mu = 131)
+```
+
+
+## Mid-West
+```{r}
+midwest.abb <- c("WI", "MI", "IL", "IN", "OH", "ND", "SD", "NE", "KS", "MN", "IA", "MO")
+
+set.seed(12)
+st.sample.MW <- sample(midwest.abb,8)
+
+samMW.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.MW)
+
+print('states in Mid-West sample: ')
+print(st.sample.MW)
+t.test(samMW.pop$deathIncrease, mu = 131)
+
+mu <- mean(stateCovidWeekly$deathIncrease)
+
+x <- samMW.pop$deathIncrease
+n.trials <- 10000
+n <- 100
+x.bars <-  numeric(n.trials)
+for (j in 1:n.trials){
+  x.samp <- sample(x, n)
+  x.bar <- mean(x.samp)
+  x.sd <- sd(x.samp)
+  x.bars[j] <- (x.bar)
+}
+
+mean(x.bars)
+
+sd(x.bars)
+
+
+t.test(x.bars, mu = 131)
+```
+
+
+## South
+```{r}
+south.abb <- c("DE", "MD" ,"DC", "VA", "WV", "NC","SC","GA","FL","KY","TN","MS", "AL", "OK", "TX", "AR", "LA")
+
+set.seed(12)
+st.sample.S <- sample(south.abb,8)
+
+samS.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.S)
+
+print('states in South sample: ')
+print(st.sample.S)
+t.test(samS.pop$deathIncrease, mu = 131)
+
+
+mu <- mean(stateCovidWeekly$deathIncrease)
+
+x <- samS.pop$deathIncrease
+n.trials <- 10000
+n <- 100
+x.bars <-  numeric(n.trials)
+for (j in 1:n.trials){
+  x.samp <- sample(x, n)
+  x.bar <- mean(x.samp)
+  x.sd <- sd(x.samp)
+  x.bars[j] <- (x.bar)
+}
+
+mean(x.bars)
+
+sd(x.bars)
+
+
+t.test(x.bars, mu = 131)
+```
+
+
+## West
+```{r}
+west.abb <- c("ID","MT","WY","NV","UT","CO","AZ","NM","AK","WA","OR","CA","HI")
+
+set.seed(12)
+st.sample.W <- sample(west.abb,8)
+
+samW.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.W)
+
+print('states in West sample: ')
+print(st.sample.W)
+t.test(samW.pop$deathIncrease, mu = 131)
+
+
+x <- samW.pop$deathIncrease
+n.trials <- 10000
+n <- 100
+x.bars <-  numeric(n.trials)
+for (j in 1:n.trials){
+  x.samp <- sample(x, n)
+  x.bar <- mean(x.samp)
+  x.sd <- sd(x.samp)
+  x.bars[j] <- (x.bar)
+}
+
+mean(x.bars)
+
+sd(x.bars)
+
+
+t.test(x.bars, mu = 131)
+```
+
+
+
+
+
+```{r}
+
+samFL.pop <- 
+  stateCovidWeekly %>% 
+  filter(state == 'FL')
+
+t.test(samFL.pop$deathIncrease, mu = 131)
+```

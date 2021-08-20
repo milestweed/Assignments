@@ -1,0 +1,496 @@
+---
+title: "Problem Set 4"
+author: "Miles Tweed"
+date: "2/27/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ISLR)
+library(class)
+library(MASS)
+library(car)
+attach(Weekly)
+```
+
+# Exercise 6
+
+**Part a.**
+This is simply plugging in the values of $X_1$ and $X_2$ into the multiple logistic  regression function:
+$$p(X) = \frac{e^{-6 + 0.05\cdot X_1 + X_2}}{1+e^{-6 + 0.05\cdot X_1 + X_2}}$$
+
+```{r}
+x1 <- 40
+x2 <- 3.5
+p <- exp(-6 + 0.05*x1 + x2)/(1+exp(-6 + 0.05*x1 + x2))
+
+print(paste('The estimated probability is:',round(p,3)))
+```
+
+**Part b.**
+
+This can be solved using the definition of the log odds:
+$$\log{\left(\frac{p(X)}{1-p(X)}\right)}=\beta_0 + \beta_1\cdot X_1 + \beta_2\cdot X_2$$
+$$\therefore\ \ X_1=\frac{\log{\left(\frac{0.5}{1-0.5}\right)} + 6 -3.5}{0.05}$$
+```{r}
+x1 = (0 + 6 - 3.5)/0.05
+print(paste('The student should study',x1,'hours.'))
+```
+
+# Exercise 9
+
+**Part a.**
+\begin{align}
+\frac{p(X)}{1-p(X)}&=0.37\\
+p(X)&=0.37(1-p(X))\\
+&=0.37 - 0.37\cdot p(X)\\
+p(x)+0.37\cdot p(X)&=0.37\\
+1.37\cdot p(X)&= 0.37\\
+p(X)&= \frac{0.37}{1.37}\\
+&\approx 0.27
+\end{align}
+Approximately, 27 out of 100 people will default.
+
+
+**Part b.**
+
+$\text{odds}=\frac{0.16}{(1-0.16)}=\frac{\frac{4}{25}}{\frac{21}{25}}=\frac{4}{21}\approx 0.19$
+The odds are $4:21$ or $\textbf{nearly}\ 1:5$.
+
+# Exercise 10
+```{r}
+weekly <- Weekly
+```
+
+**Part a.**
+```{r warning=FALSE, fig.height=8, fig.width=10}
+summary(weekly)
+
+weekly %>% 
+  dplyr::select(!c(Year,Direction)) %>% 
+  cor()
+
+scatterplotMatrix(weekly, regLine=list(col='black'))
+```
+
+Based on the numerical and graphical summaries above, there are some minor negative correlations between the Lag variables and the Volume variable but there are not any major patterns that emerge. All of the Lag variable have roughly the same distribution.
+
+**Part b.**
+
+```{r}
+model1 <- glm("Direction~Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume", data = weekly, family = binomial)
+
+# Model Overview of logistic regression with all predictors
+summary(model1)
+```
+
+The only predictor that showed statistical significance was Lag2 and it has a positive coefficient (0.0296).
+
+**Part c.**
+```{r}
+glm.probs = predict(model1, type = "response")
+glm.pred=rep("Down",1089)
+glm.pred[glm.probs > 0.5] = "Up"
+
+# Confusion Matrix for logistic regression with all predictors
+table(glm.pred,Direction)
+print(paste("The fraction of correct predictions:",round((54+557)/1089,3)))
+```
+
+
+**Part d.**
+```{r}
+train <- (Year<2009)
+weeklyHeld <- weekly[!train,]
+Direction.held <- Direction[!train]
+model2 <- glm("Direction~Lag2", data = weekly, family = binomial, subset = train)
+
+# Logistic Regression with Lag2 alone Model Summary
+summary(model2)
+
+glm.probs2 <- predict(model2, weeklyHeld, type = "response")
+glm.pred2 <- rep("Down",104)
+glm.pred2[glm.probs2>0.5] = "Up"
+
+#confusion Matrix fr logistic regression model
+table(glm.pred2,Direction.held)
+print(paste("The fraction of correct predictions:",round((17+48)/104,3)))
+```
+
+
+**Part e.**
+```{r}
+model3 <- lda(Direction~Lag2, data = weekly, subset = train)
+# LDA model summary on weekly 
+model3
+
+lda.pred = predict(model3, weeklyHeld)
+
+# Confusion Matrix For LDA on weekly
+table(lda.pred$class,Direction.held)
+
+print(paste("The fraction of correct predictions:",mean(lda.pred$class==Direction.held)))
+```
+
+**Part f.**
+```{r}
+model4 <- qda(Direction~Lag2, data = weekly, subset = train)
+
+#Model summary of QDA model with Lag2 only
+model4
+
+qda.pred = predict(model4, weeklyHeld)
+
+# Confusion Matrix of QDA model with Lag2 only
+table(qda.pred$class,Direction.held)
+
+print(paste("The fraction of correct predictions:",round(mean(qda.pred$class==Direction.held),3)))
+```
+
+**Part g.**
+```{r}
+train.X=weekly[train,] %>% dplyr::select(Lag2)
+test.X=weekly[!train,] %>% dplyr::select(Lag2)
+train.Direction=Direction[train]
+set.seed(1)
+knn.pred=knn(train.X,test.X,train.Direction,k=1)
+
+# Confusion Matrix of KNN with Lag 2 only K=1
+table(knn.pred,Direction.held)
+print(paste("The fraction of correct predictions:",round(mean(knn.pred==Direction.held),3)))
+```
+
+
+**Part h.**
+According to the fraction of correct predictions, the logistic regression model and linear discriminate analysis provided the greatest number of correct predictions.
+
+**Part i.**
+
+***Logistic Regression***
+
+Unsurprisingly, the today variable correctly classified all of the data. Otherwise, the Lag2 predictor was the best single predictor for direction which agrees with its statistical significance when all of the predictors was fitted.  Interestingly, the Lag3 and Lag4 predictors only led to predicted probabilities greater than -0.5 leading to only 'Up' predictions.
+```{r warning=FALSE}
+# Individual predictors
+predictors <- names(weekly)[-c(1,9)]
+
+for (name in predictors){
+      form <- paste("Direction~",name)
+      model2 <- glm(form, data = weekly, family = binomial, subset = train)
+      
+      summary(model2)
+      
+      glm.probs2 <- predict(model2, weeklyHeld, type = "response")
+      glm.pred2 <- rep("Down",104)
+      glm.pred2[glm.probs2>0.5] = "Up"
+      cm = table(glm.pred2,Direction.held)
+      if(dim(cm)==c(2,2)){
+      print(paste0("The fraction of correct predictions for ",name," is ",round((cm[1,1]+cm[2,2])/sum(cm),3)))
+      } else {
+        print(paste0("The fraction of correct predictions for ",name," is ",round((cm[1,1]+0)/sum(cm),3)))
+        print(paste(name,"predicted no Down responses."))
+      }
+}
+```
+
+Again, the interactions including today had near perfect prediction, but some interactions confounded the today variable and led to less that perfect, but still very high, prediction. None of the interaction terms performed as well as Lag2 by itself of the combination of all predictors.
+```{r warning=FALSE}
+# Interaction Terms between two variables
+predictors <- names(weekly)[-c(1,9)]
+
+for (name in predictors){
+  for(name2 in predictors) {
+    if(name != name2) {
+      form <- paste("Direction~",name,"+",name2,"+",name,"*",name2)
+      model2 <- glm(form, data = weekly, family = binomial, subset = train)
+      
+      summary(model2)
+      
+      glm.probs2 <- predict(model2, weeklyHeld, type = "response")
+      glm.pred2 <- rep("Down",104)
+      glm.pred2[glm.probs2>0.5] = "Up"
+      cm = table(glm.pred2,Direction.held)
+      print(paste0("The fraction of correct predictions for ",name,":",name2," is ",round((cm[1,1]+cm[2,2])/sum(cm),3)))
+    }
+  }
+}
+```
+
+***LDA***
+
+All of the Lag predictors on their own led to similar prediction, so I am only including Lag1 as an example.  LDA performed better with Lag3 and Lag4 than logistic regression by giving similar results to the other predictors.
+```{r}
+# With Lag1 only
+model3 <- lda(Direction~Lag1, data = weekly, subset = train)
+
+# Model overview
+model3
+
+lda.pred = predict(model3, weeklyHeld)
+
+# Confusion Matrix
+table(lda.pred$class,Direction.held)
+
+print(paste("The fraction of correct predictions:",mean(lda.pred$class==Direction.held)))
+```
+
+The Volume predictor did not perform as well as the Lag predictors and correctly identified less than 50% of the data.
+```{r}
+# With Volume only
+model3 <- lda(Direction~Volume, data = weekly, subset = train)
+
+# Model Overview
+model3
+
+lda.pred = predict(model3, weeklyHeld)
+
+#Confusion matrix
+table(lda.pred$class,Direction.held)
+
+print(paste("The fraction of correct predictions:",mean(lda.pred$class==Direction.held)))
+```
+
+The today predictor had the highest accuracy again. Since this variable represents the current state of the market this is unsurprising.
+```{r}
+# With Volume
+model3 <- lda(Direction~Today, data = weekly, subset = train)
+
+# Model Overview
+model3
+
+lda.pred = predict(model3, weeklyHeld)
+
+# Confusion Matrix
+table(lda.pred$class,Direction.held)
+
+print(paste("The fraction of correct predictions:",mean(lda.pred$class==Direction.held)))
+```
+
+For KNN the Lag5 predictor was the most effective with k = 1 and correctly identified 55% of the test data.
+```{r warning=FALSE}
+# Individual predictors
+predictors <- names(weekly)[-c(1,9)]
+
+for (name in predictors){
+  train.X=weekly[train,] %>% dplyr::select(name)
+  test.X=weekly[!train,] %>% dplyr::select(name)
+  train.Direction=Direction[train]
+  set.seed(1)
+  knn.pred=knn(train.X,test.X,train.Direction,k=1)
+  table(knn.pred,Direction.held)
+  print(paste("The fraction of correct predictions for",name,":",round(mean(knn.pred==Direction.held),3)))
+}
+
+```
+
+The interaction terms Lag3:Lag4 was the most effective (excluding any Today term) and correctly identified 61% of the data.
+```{r warning=FALSE}
+# Interaction Terms between two variables
+predictors <- names(weekly)[-c(1,9)]
+
+for (name in predictors){
+  for(name2 in predictors) {
+    if(name != name2) {
+      train.X=weekly[train,] %>% dplyr::select(name,name2)
+      test.X=weekly[!train,] %>% dplyr::select(name,name2)
+      train.Direction=Direction[train]
+      set.seed(1)
+      knn.pred=knn(train.X,test.X,train.Direction,k=5)
+      table(knn.pred,Direction.held)
+      print(paste0("The fraction of correct predictions for ",name,":",name2,": ",round(mean(knn.pred==Direction.held),3)))
+    }
+  }
+}
+```
+
+
+**KNN with K>1**
+
+Changing the K value from one to five to ten did not significantly increase the fraction of correct predictions $(0.50 \rightarrow 0.54 \rightarrow 0.55)$.
+```{r}
+#K = 5
+train.X=weekly[train,] %>% dplyr::select(Lag2)
+test.X=weekly[!train,] %>% dplyr::select(Lag2)
+train.Direction=Direction[train]
+set.seed(1)
+knn.pred=knn(train.X,test.X,train.Direction,k=5)
+
+# Confusion Matrix of KNN Model with Lag2 only k=10
+table(knn.pred,Direction.held)
+print(paste("The fraction of correct predictions:",round(mean(knn.pred==Direction.held),3)))
+```
+
+```{r}
+#K = 10
+train.X=weekly[train,] %>% dplyr::select(Lag2)
+test.X=weekly[!train,] %>% dplyr::select(Lag2)
+train.Direction=Direction[train]
+set.seed(1)
+knn.pred=knn(train.X,test.X,train.Direction,k=10)
+
+# Confusion Matrix of KNN Model with Lag2 only k=10
+table(knn.pred,Direction.held)
+print(paste("The fraction of correct predictions:",round(mean(knn.pred==Direction.held),3)))
+```
+
+Overall, the Lag2 predictor with logistic regression seemed to be the most effective predictor, excluding the today term.
+
+# Exercise 13
+
+For the Boston analysis, the encoding is 1 if crime is above (or equal to) the median and 0 if crime is below the median.
+```{r warning=FALSE, fig.height=8, fig.width=10}
+library(healthcareai)
+
+bos <- 
+Boston %>% 
+  mutate(crime = ifelse(crim >= median(crim), 1, 0)) %>%
+  split_train_test(outcome = crime)
+
+
+n = round(0.75*506)
+trainData <- bos$train
+testData <- bos$test
+
+# Correlation 
+Boston %>% cor()
+Boston %>% scatterplotMatrix()
+```
+
+## Logistic Regression
+
+```{r}
+# All Predictors
+glm.fit.bos <- glm(crime~., data = trainData, family = binomial)
+
+# Model overview of logistic model with all predictors
+summary(glm.fit.bos)
+
+glm.probs2 <- predict(glm.fit.bos, testData, type = "response")
+glm.pred2=rep(0,100)
+glm.pred2[glm.probs2 > 0.5] = 1
+
+# Confusion matrix of logistic model with all predictors
+table(glm.pred2,testData$crime)
+print(paste("The fraction of correct predictions:",round((17+48)/104,3)))
+```
+
+I first tested the effect of using every single predictors by themselves. Surprisingly, some predictors that did not show any statistical significance in the first model were very effective predictors by themselves. One notable example is indus which correctly identified 80% of of the data points. Nox was the greatest single predictor and correctly classified 86% of the data.
+```{r}
+# All single predictor models
+predictors <- names(Boston)[-1]
+
+
+for (name in predictors){
+  func <- paste0("crime~",name)
+  glm.fit.bos <- glm(func, data = trainData, family = binomial)
+  glm.probs2 <- predict(glm.fit.bos, testData, type = "response")
+  glm.pred2=rep(0,100)
+  glm.pred2[glm.probs2 > 0.5] = 1
+  cm <- table(glm.pred2,testData$crime)
+  print(paste("The fraction of correct predictions for",name,":",round((cm[1,1]+cm[2,2])/sum(cm),3)))
+  print(paste("The coefficient for",name,"is",round(glm.fit.bos$coefficients[name],3)))
+}
+```
+
+The following code runs a model the includes two terms and their interaction term.  I did not include the output because of the length but, similarly to above, the terms that contained nox were the most effective with some correctly classifying 90% of the data (nox:indus).
+```{r results='hide', warning=FALSE}
+# Interaction Terms between two variables
+# OUTPUT IS HIDDEN DUE TO LENGTH
+for (name in predictors){
+  for(name2 in predictors) {
+    if(name != name2) {
+      func <- paste0("crime~",name,"+",name2,"+",name,"*",name2)
+      glm.fit.bos <- glm(func, data = trainData, family = binomial)
+      glm.probs2 <- predict(glm.fit.bos, testData, type = "response")
+      glm.pred2=rep(0,100)
+      glm.pred2[glm.probs2 > 0.5] = 1
+      cm <- table(glm.pred2,testData$crime)
+      print(paste("The fraction of correct predictions for",name,"and",name2,":",round((cm[1,1]+cm[2,2])/sum(cm),3)))
+      print(glm.fit.bos$coefficients)
+    }
+  }
+}
+
+```
+
+## LDA
+
+```{r}
+# All Predictors
+lda.fit.bos <- lda(crime~., data = trainData)
+
+# Model Overview of LDA with all predictors
+lda.fit.bos
+
+
+lda.pred = predict(lda.fit.bos, testData)
+
+# Confusion Matrix of LDA model with all predictors
+table(lda.pred$class,testData$crime)
+
+print(paste("The fraction of correct predictions:",round(mean(lda.pred$class==testData$crime),3)))
+```
+LDA with all predictors performed quite well and correctly classified 89% of the test data points.
+
+
+## KNN
+
+```{r}
+#All Predictors
+train.X=trainData %>% dplyr::select(-crime)
+train.crime=trainData %>% dplyr::select(crime)
+
+test.X=testData %>% dplyr::select(-crime)
+true.crime=testData %>% dplyr::select(crime)
+
+set.seed(1)
+knn.pred=knn(train=train.X, test=test.X, cl=train.crime[,1], k=1)
+
+# Confusion Matrix of KNN model with all predictors k=1
+table(knn.pred,true.crime[,1])
+print(paste("The fraction of correct predictions:",round(mean(knn.pred==true.crime[,1]),3)))
+```
+KNN with k=1 on all predictors performed even better that LDA and correctly classified 92% of data points.
+
+KNN trained on individual predictors led to very high prediction rates.  The indus variable was the most effective and correctly classified 97% of the data followed by the nox variable with 96%.
+```{r}
+# All single predictor models k=5
+predictors <- names(Boston)[-1]
+
+
+for (name in predictors){
+  train.X=trainData %>% dplyr::select(-crime) %>% dplyr::select(name)
+  train.crime=trainData %>% dplyr::select(crime)
+  test.X=testData %>% dplyr::select(-crime) %>% dplyr::select(name)
+  true.crime=testData %>% dplyr::select(crime)
+  
+  set.seed(1)
+  knn.pred=knn(train=train.X, test=test.X, cl=train.crime[,1], k=1)
+  table(knn.pred,true.crime[,1])
+  print(paste("The fraction of correct predictions for",name,":",round(mean(knn.pred==true.crime[,1]),3)))
+}
+```
+
+Many of the interaction terms correctly classifies the test data with accuracy of 97% and many included the zn, indus, and nox terms(zn:indus, zn:nox, zn:tax, chas:indus). Again the results have been hidden due to length.  Running the .Rmd file will display the output for this and the earlier hidden results.
+```{r results='hide',warning=FALSE}
+# Interaction Terms between two variables
+# RESULTS HAVE BEEN HIDDEN DUE TO LENGTH
+for (name in predictors){
+  for(name2 in predictors) {
+    if(name != name2) {
+      train.X=trainData %>% dplyr::select(-crime) %>% dplyr::select(name,name2)
+      train.crime=trainData %>% dplyr::select(crime)
+      
+      test.X=testData %>% dplyr::select(-crime) %>% dplyr::select(name,name2)
+      true.crime=testData %>% dplyr::select(crime)
+      
+      set.seed(1)
+      knn.pred=knn(train=train.X, test=test.X, cl=train.crime[,1], k=1)
+      table(knn.pred,true.crime[,1])
+      print(paste0("The fraction of correct predictions for ",name,":",name2,": ",round(mean(knn.pred==true.crime[,1]),3)))
+    }
+  }
+}
+
+```

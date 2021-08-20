@@ -1,0 +1,166 @@
+---
+title: "Homework 12"
+author: "Miles Tweed"
+date: "5/7/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Problem 1
+
+**Part 1**
+```{r}
+chile <- read.delim('../../Data/Chile.txt', sep = '\t')
+
+chile.BIN <- chile %>% 
+  filter(vote %in% c('Y','N')) %>% 
+  drop_na() %>% 
+  mutate(vote01 = ifelse(vote == 'Y', 1,0)) %>% 
+  select(-vote)
+
+glm.obj <- glm(vote01~., data = chile.BIN, family = 'binomial')
+
+glm.null <- glm(vote01~1, data = chile.BIN, family = 'binomial')
+
+anova(glm.null, glm.obj, test = "LRT")
+```
+
+The model is significant overall with a chi-squared value of 1656.8 which leads to p-value $< 2.2\cdot10^{-16}$.
+
+
+**Part 2**
+```{r}
+step(glm.obj, trace = F)
+```
+
+The variables region, age, population, and income were dropped from the model.
+
+Let $p_i = p(vote01_i = 1 | sex_i,\ education_i,\ statusquo_i)$
+$$\left\{\begin{array}{rl}vote01_i&\sim_{indep.}Bin(1,p_i),\\\log\left(\frac{p_i}{1-p_i}\right)&=\beta_0 + \beta_1D_{sexM,i} + \beta_2D_{educationPS,i} + \beta_3D_{educationS,i}+\beta_4statusquo_i\end{array}\right.$$
+
+$$\log\left(\frac{p_i}{1-p_i}\right)=1.015 - 0.574 D_{sexM,i} - 1.107D_{educationPS,i} -0.683D_{educationS,i}+ 3.689statusquo_i$$
+**Part 3**
+```{r}
+glm.reduced <- glm(vote01~sex+education+statusquo, data = chile.BIN, family = "binomial")
+
+summary(glm.reduced)
+```
+
+The two most significant regressors are status quo and the dummy variable indicating post-secondary education. 
+
+***for status quo***
+
+For a one unit increase in support for the status quo the odds that an individual will vote for Pinochet increase by a multiple of $e^{3.169} \approx 23.78$ holding other predictors constant. Or more simply, a person who is more supportive of the status quo is more likely to vote for Pinochet holding other variables constant.
+
+***for EducationPS***
+
+The odds that an individual who has a post-secondary education will vote for Pinochet are $e^-1.107 \approx 0.331$ times that of individuals who only have a primary education holding other predictors constant. Or more simply, a person who has a post-secondary education is less likely to vote for Pinochet than someone with just a primary education holding other variables constant.
+
+**Part 4**
+```{r}
+freq.sex <- names(sort(table(chile.BIN$sex), decreasing = TRUE)[1])
+freq.edu <- names(sort(table(chile.BIN$education), decreasing = TRUE)[1])
+sq.med <- median(chile.BIN$statusquo)
+
+# odds
+freq.log.odds <- predict(glm.reduced, newdata=data.frame(sex=freq.sex, 
+                                                         education = freq.edu,
+                                                         statusquo = sq.med))
+freq.odds <- exp(freq.log.odds)
+freq.odds
+
+# probability
+freq.prob <- predict(glm.reduced, newdata=data.frame(sex=freq.sex, 
+                                                         education = freq.edu,
+                                                         statusquo = sq.med),
+                     type='response')
+freq.prob
+```
+
+
+**Part 5**
+
+***Full Model***
+```{r}
+glm.pred <- predict(glm.obj, type='response')
+vote.pred <- ifelse(glm.pred > 0.50, "Yes","No")
+true.labs <- ifelse(chile.BIN$vote01 == 1, "Yes", "No")
+conf.mat <- table(Pred=vote.pred, 
+                  True=true.labs)
+conf.mat
+
+print(paste0("Percent correct classifications: ", round(mean(vote.pred == true.labs)*100,4)))
+```
+
+***Reduced Model***
+```{r}
+glm.pred <- predict(glm.reduced, type='response')
+vote.pred <- ifelse(glm.pred > 0.50, "Yes","No")
+true.labs <- ifelse(chile.BIN$vote01 == 1, "Yes", "No")
+conf.mat <- table(Pred=vote.pred, 
+                  True=true.labs)
+conf.mat
+
+print(paste0("Percent correct classifications: ", round(mean(vote.pred == true.labs)*100,4)))
+```
+
+The reduced model outperforms the full model by a bit (0.12%).
+
+
+# Problem 2
+
+**Part 1**
+```{r}
+library(nnet)
+multinom.obj <- multinom(as.factor(vote) ~ age + sex + region + statusquo, data=chile, na.action = na.omit)
+summary(multinom.obj)
+```
+
+The baseline category is individuals who will abstain from voting altogether.
+
+**Part 2**
+
+Let $p_{ij}$ be the probability that observation i falls into category j where j is how an individual votes (yes for Pinochet, No against Pinochet, Undecided, or Abstain) and the baseline category is Abstain.
+$$\left\{\begin{array}{rl}Y_i&\sim_{indep.}Multinomial(p_{(i,Yes)},\ p_{(i,No)},\ p_{(i,Undecided)},\  p_{(i,Abstain)}),\\\log\left(\frac{p_{ij}}{1-p_{im}}\right)&=\beta_{0,j} + \beta_{1,j}age_i + \beta_{2,j}D_{sexM,i} + \beta_{3,j}D_{regionM,i} + \beta_4D_{regionN,i} + \beta_5D_{regionS,i} +\\& \beta_6D_{regionSA,i} + \beta_7statusquo_i,\\
+P_{im} &= P(Y_i = m) = 1-\sum_{j=1}^{m-1}p_{ij}\end{array}\right.$$
+
+
+**Part 3**
+
+***a.***
+
+Holding other variables constant, the odds of an individual voting against Pinochet (voting "No") are $e^{0.005} = 1.005$ times that of them abstaining if the individual is one year older. In other words, an individual is slightly more likely to vote no than abstain if they are older.
+
+Holding other variables constant, the odds of an individual voting for Pinochet (voting "Yes") are $e^{0.025373911} = 1.026$ times that of them abstaining if the individual is one year older. In other words, an individual is slightly more likely to vote yes than abstain if they are older.
+
+***b.***
+
+Holding other variables constant, the odds of an individual voting against Pinochet (voting "No") are $e^{0.699} = 2.011$ times that of them abstaining if the individual is male. In other words, an individual is twice as likely to vote no than abstain if they male.
+
+Holding other variables constant, the odds of an individual voting for Pinochet (voting "Yes") are $e^{-0.104} = 0.901$ times that of them abstaining if the individual is male. In other words an individual is less likely to vote yes than abstain if they are male
+
+**Part 4**
+
+\begin{align*}
+\log\left(\frac{p_{i,Yes}}{p_{i,No}}\right)&=\log\left(\frac{\frac{p_{i,Yes}}{p_{i,A}}}{\frac{p_{i,No}}{p_{i,A}}}\right) \\
+&=\frac{p_{i,Yes}}{p_{i,A}}-\frac{p_{i,No}}{p_{i,A}}\\
+&=(\beta_{0,Yes} - \beta_{0,No}) + (\beta_{1,Yes} - \beta_{1,No})age_i + (\beta_{2,Yes} - \beta_{2,No})D_{sexM,i} + \\
+&(\beta_{3,Yes} - \beta_{3,No})D_{regionM,i} + (\beta_{4,Yes} - \beta_{4,No})D_{regionN,i} + (\beta_{5,Yes} - \beta_{5,No})D_{regionS,i} + \\
+&(\beta_{6,Yes} - \beta_{6,No})D_{regionSA,i} + (\beta_{7,Yes} - \beta_{7,No})statusquo_i\\
+&=-0.259 + 0.0200age_i -0.803D_{sexM,i} + 0.667D_{regionM,i} + 0.389D_{regionN,i} + \\
+&0.080D_{regionS,i} + 0.312D_{regionSA,i} + 3.698statusquo_i
+\end{align*}
+
+
+***a.***
+
+Holding other variables constant, the odds of an individual voting for Pinochet (voting "Yes") are $e^{0.020} = 1.020$ times that of them voting against Pinochet (voting "No") if the individual is one year older. In other words, an individual is more likely to vote Yes than No if they are older.
+
+***b.***
+
+Holding other variables constant, the odds of an individual voting for Pinochet (voting "Yes") are $e^{-0.803} = 0.448$ times that of them voting against Pinochet (voting "No") if the individual is male. In other words an individual is less likely to vote yes than no if they are male
+

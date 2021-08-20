@@ -1,0 +1,66 @@
+---
+title: "Homework 9"
+author: "Miles Tweed"
+date: "2/4/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy = TRUE)
+library(tidyverse)
+library(data.table)
+```
+
+```{r include=FALSE}
+data.dir <- "/home/mtweed/Documents/New_College/year_2/Data_viz/Data"
+
+loans <- fread(file.path(data.dir, "LendingClubLoanData.csv")) 
+
+```
+
+**1.** show the contingency table of the counts, using two categorical variables of your choice.
+```{r}
+loans1 <- 
+loans %>% select(purpose, grade) %>% filter(purpose != "", grade != "")
+
+table(loans1)
+```
+
+
+**2.** Obtain the conditional proportions of one variable, given the categories of the other.
+```{r}
+loans2 <- 
+  loans1 %>% group_by(purpose) %>% count(grade) %>% mutate(Percent = 100*n/sum(n))
+
+loans2$purpose <- 
+fct_recode(loans2$purpose,Car="car",
+           `Credit Card`="credit_card",
+           `Debt Consolidation`="debt_consolidation",
+           Educational="educational",
+           `Home Improvement`="home_improvement",
+           House="house",
+           `Major Purchases`="major_purchase",
+           Medical="medical",
+           Moving="moving",
+           Other="other",
+           `Renewable Energy`="renewable_energy",
+           `Small Business`="small_business",
+           Vacation="vacation",
+           Wedding="wedding")
+
+head(loans2)
+```
+
+
+**3.** Construct an appropriate graph to compare the conditional proportions.
+```{r}
+loans2 %>% ggplot(aes(y = Percent,x = grade, fill = grade)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(vars(purpose)) + 
+  scale_fill_brewer(palette = "Set3", direction = -1) +
+  guides(fill = 'none') + 
+  theme_minimal() +
+  labs(title = "Distribution of Loan Grades by Loan Purpose") + xlab("Grade")
+
+```

@@ -1,0 +1,158 @@
+---
+title: "Stoke Data"
+author: "Miles Tweed"
+date: "5/11/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(olsrr)
+```
+
+```{r, message=FALSE}
+Stroke <- read_csv('healthcare-dataset-stroke-data.csv')
+Stroke$bmi <- Stroke$bmi %>% as.numeric()
+Stroke <- Stroke %>% mutate(bmi2 = ifelse(is.na(bmi), median(bmi, na.rm = TRUE), bmi)) %>% select(-bmi, -id) %>% filter(gender!="Other")
+```
+
+# Expectation 1
+
+```{r}
+
+Stroke2<-Stroke[,sapply(Stroke, is.numeric)]
+
+Stroke2 <- Stroke2 %>% select(-stroke,-hypertension,-heart_disease)
+
+pairs(Stroke2)
+
+#Stroke$stroke<-as.character(Stroke$stroke)
+#strokev<-c("0"="red", "1"="green")
+
+ggplot(Stroke,aes(x=bmi2, y=avg_glucose_level, colour = factor(stroke))) +
+  geom_point(alpha=.5) +
+  labs(x="BMI", y="Average Glucose Level", title="BMI vs. Glucose Level") +
+  #scale_fill_manual(values=strokev) +
+  scale_color_discrete(name="Stroke", labels=c("No","Yes"))
+
+ggplot(Stroke, aes(x = gender, fill =  gender)) + 
+  geom_bar(position = 'dodge') +
+  labs(title = "Gender Distribution")
+
+ggplot(Stroke, aes(x = work_type, fill =  gender)) + 
+  geom_bar(position = 'dodge') +
+  labs(x= "Work Type", title = "Work Type by Gender")
+
+ggplot(Stroke, aes(x = Residence_type, fill =  gender)) + 
+  geom_bar(position = 'dodge') +
+  labs(x= "Residence Type", title = "Residence Type by Gender")
+
+ggplot(Stroke, aes(x = smoking_status, fill =  gender)) + 
+  geom_bar(position = 'dodge') +
+  labs(x= "Smoking Status", title = "Past Smoking Status by Gender")
+
+ggplot(Stroke, aes(x = ever_married, fill =  gender)) + 
+  geom_bar(position = 'dodge') +
+  labs(title = "Marriage Status by Gender", x = "Marriage Status")
+```
+
+
+# Expectation 2
+```{r}
+# Making ever_married and smoking_status factors
+Stroke$ever_married <- factor(Stroke$ever_married)
+Stroke$smoking_status <- factor(Stroke$smoking_status)
+
+# Contingency Table
+con.table <- table(Stroke$ever_married, Stroke$smoking_status)
+con.table
+
+# Chi-Squared Test
+chisq.test(con.table)
+
+# Probability that marriage and smoking status are independent
+pchisq(600.33, df=3, lower.tail=F)
+
+x11()
+curve(dchisq(x, df = 3), from = 0, to = 20, main = "Chi-Squared Distribution with df=3")
+savePlot("chi_sq.png")
+curve(dchisq(x, df = 3), from = 0, to = 601, main = "Location of Test Statistic")
+abline(v = 600.33, col='red')
+text(x=530, y = 0.03, labels = "Chi-Squared Statistic", col = 'red', cex = 0.7)
+savePlot("chi_sq_stat.png")
+```
+
+
+
+# Expectation 3
+```{r}
+lm.obj <- lm(bmi2~., Stroke)
+
+summary(lm.obj)
+
+step(lm.obj, trace = 0)
+
+lm.reduced <- lm(bmi2 ~ age + hypertension + heart_disease + ever_married + 
+    work_type + avg_glucose_level + smoking_status + stroke, data = Stroke)
+
+summary(lm.reduced)
+```
+
+
+# Expectation 4
+```{r}
+
+plot(lm.reduced,which=1)
+plot(lm.reduced,which=2)
+
+Strokeoutlier <- Stroke[-c(2129, 4209, 929), ]
+
+lm.reduced2 <- lm(bmi2 ~ age + hypertension + heart_disease + ever_married + 
+    work_type + avg_glucose_level + smoking_status + stroke, data = Strokeoutlier)
+
+summary(lm.reduced2)
+
+plot(lm.reduced2,which=1)
+plot(lm.reduced2,which=2)
+
+```
+
+# Expectation 5
+
+```{r}
+plot(lm.reduced, which=4)
+
+# remove outliers based on Cook's distance
+Stroke.Out <- Stroke[-c(2129, 4209, 4611),]
+
+# Refit Model
+lm.outliers <- lm(bmi2~age + hypertension + heart_disease + ever_married + 
+    work_type + avg_glucose_level + smoking_status + stroke, data = Stroke.Out)
+summary(lm.outliers)
+```
+
+
+# Expectation 6
+```{r}
+glm.obj <- glm(stroke~., Stroke, family='binomial')
+
+glm.null <- glm(stroke~1, Stroke, family = 'binomial')
+
+# Test of overall model significance
+# Likelihood Ratio Test
+anova(glm.null, glm.obj, test = "LRT")
+
+# Forward Stepwise Selection
+step(glm.obj, trace = 0)
+
+# Fit the reduced model
+glm.reduced <- glm(stroke ~ age + hypertension + heart_disease + avg_glucose_level, data = Stroke, family = 'binomial')
+
+anova(glm.null, glm.reduced, test = "LRT")
+
+#checking for collinearity
+vif(glm.reduced)
+
+
+```

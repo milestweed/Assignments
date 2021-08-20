@@ -1,0 +1,139 @@
+---
+title: "Homework 11"
+author: "Miles Tweed"
+date: "5/3/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Problem 1
+
+**Part 1**
+\begin{align}
+p(X)&=\frac{e^{\beta_0+\beta_1X}}{1+e^{\beta_0+\beta_1X}}\\
+1-p(X)&=\frac{1+e^{\beta_0+\beta_1X}}{{1+e^{\beta_0+\beta_1X}}}-\frac{e^{\beta_0+\beta_1X}}{1+e^{\beta_0+\beta_1X}}\\
+&=\frac{1}{1+e^{\beta_0+\beta_1X}}\\
+\log\left(\frac{p(X)}{1-p(X)}\right)&=\log\left(\frac{\frac{e^{\beta_0+\beta_1X}}{1+e^{\beta_0+\beta_1X}}}{\frac{1}{1+e^{\beta_0+\beta_1X}}}\right)\\
+&=\log\left(\frac{e^{\beta_0+\beta_1X}}{1+e^{\beta_0+\beta_1X}}\cdot(1+e^{\beta_0+\beta_1X})\right)\\
+&=\log{e^{\beta_0+\beta_1X}} = \beta_0+\beta_1X
+\end{align}
+
+**Part 2**
+
+***a)***
+\begin{align*}
+\frac{p(X)}{1-p(X)}&=0.37\\
+p(X)&=0.37-0.37p(X)\\
+p(X) + 0.37p(X) &= 0.37\\
+p(X)(1.37)&=0.37\\
+p(X)&=\frac{0.37}{1.37}\approx 0.270
+\end{align*}
+
+***b)***
+\begin{align*}
+p(X)&=0.16\\
+\frac{p(X)}{1-p(X)}&=\frac{0.16}{1-0.19}=\frac{0.16}{0.84}\approx 0.19\\
+\end{align*}
+
+# Problem 2
+
+**Part 1**
+
+\begin{align*}
+\log\left(\frac{\hat{p}(X_1, X_2)}{1-\hat{p}(X_1, X_2)}\right)&=-6+0.05X_1 + X_2\\
+\text{where } \hat{p}(X_1,X_2)& = \hat{p}(Y = \text{recieve an A } |\ X_1 = \text{Hours Studied and } X_2=\text{Undergrad GPA})
+\end{align*}
+
+**Part 2**
+
+\begin{align*}
+\log\left(\frac{\hat{p}(x)}{1-\hat{p}(X)}\right)&=-6 + 0.05(40) + 3.5=-0.5\\
+\frac{\hat{p}(X)}{1-\hat{p}(X)}&= e^{-0.5} = 0.6065\\
+\hat{p}(X)&= 0.6065-0.6065\hat{p}(X)\\
+\hat{p}(X)&=\frac{0.6065}{1.6065}\approx 0.378
+\end{align*}
+
+**Part 3**
+
+\begin{align*}
+\hat{p}(X) &= 0.5\\
+\log\left(\frac{0.5}{0.5}\right)&=0=-6+0.05X_1+3.5\\
+0&=-2.5 + 0.05X_1\\
+X_1 &= \frac{2.5}{0.05} =50\text{ hours}
+\end{align*}
+
+# Problem 3
+```{r}
+library(ISLR)
+Auto$mpg01 <- ifelse(Auto$mpg > median(Auto$mpg), 1, 0)
+Auto$mpg <- NULL
+```
+
+**Part1**
+$$mpg01_i = \beta_0 + \beta_1horsepower_i + \epsilon_i,\ \epsilon_i\sim\mathbb{N}(0, \sigma^2)$$
+```{r}
+lm.obj <- lm(mpg01~horsepower, Auto)
+plot(lm.obj,which = c(1,2,3))
+```
+
+The fitted values are over or under estimates in nearly every case and the error terms are not normally distributed.  The linear model attempts to fit continuous values to a response that we know to be binomially distributed which is apparent in the residuals versus fitted plot.
+
+**Part 2**
+
+***a)*** 
+Let $p_i = p(mpg01_i = 1 | horsepower_i)$
+$$\left\{\begin{array}{rl}mpg_i&\sim_{indep.}Bin(1,p_i),\\\log\left(\frac{p_i}{1-p_i}\right)&=\beta_0 + \beta_1horsepower_i\end{array}\right.$$
+
+***b)***
+```{r}
+glm.obj <- glm(mpg01~horsepower, Auto, family = "binomial")
+summary(glm.obj)
+```
+
+\begin{align*}
+&\log\left(\frac{\hat{p}(horsepower)}{1-\hat{p}(horsepower)}\right)=9.299-0.0968horsepower\\
+&\text{where }\hat{p}(X) = \hat{p}(mpg01 = 1\ |\ horsepower)
+\end{align*}
+
+
+***c)*** The relationship is statistically significant with a p-value $<2\cdot10^{-16}$.  Per one unit increase in horsepower the odds of a vehicle having mpg greater than the median value decreases by a multiple of $e^{-0.0968}=0.9077$. Simply, as horsepower increases the odds of a vehicle having mpg greater than the median decreases.
+
+***d)*** The 95% confidence interval for the slope is: 
+$$(9.299 - 1.96\cdot1.01, 9.299 + 1.96\cdot1.01) = (7.32, 11.28)$$
+If a vehicle has zero horsepower, the odds that the vehicle has mpg greater than the median value are between $e^{7.32}\approx1510$:1 and $e^{11.29}\approx79221$:1. In other words, it is almost certain that a vehicle with zero horsepower would have mpg greater than the median value.
+
+***e)*** 
+\begin{align*}
+\log\left(\frac{\hat{p}(horsepower)}{1-\hat{p}(horsepower)}\right)&=9.299 - 0.0968(80)\\
+\frac{\hat{p}(horsepower)}{1-\hat{p}(horsepower)}&=e^{1.555}\\
+=4.735\\
+\hat{p}(horsepower)& = 4.735 - 4.735\cdot\hat{p}(horsepower)\\
+\hat{p}(horsepower)&=\frac{4.735}{5.735}\approx 0.826
+\end{align*}
+
+The odds of a vehicle with 80 horsepower having mpg greater than the median is 4.735 to one which corresponds to a probability of 0.826 or 82.6%.
+
+**Part 4**
+
+***a)***
+Let $p_i = p(mpg01_i = 1 | horsepower_i,\ horsepower^2_i)$
+$$\left\{\begin{array}{rl}mpg_i&\sim_{indep.}Bin(1,p_i),\\\log\left(\frac{p_i}{1-p_i}\right)&=\beta_0 + \beta_1horsepower_i + \beta_2horsepower^2_i\end{array}\right.$$
+***b)***
+$$H_0:\beta_2 = 0,\ H_a:\beta_2\ne0$$
+
+***c)***
+```{r}
+glm.obj <- glm(mpg01~horsepower+I(horsepower^2), Auto, family = 'binomial')
+summary(glm.obj)
+```
+\begin{align*}
+&\log\left(\frac{\hat{p}(horsepower, horsepower^2)}{1-\hat{p}(horsepower,horsepower^2)}\right)=13.481-0.183horsepower+0.0004horsepower^2\\
+&\text{where }\hat{p}(X_1,X_2) = \hat{p}(mpg01 = 1\ |\ horsepower, horsepower^2)
+\end{align*}
+
+***d)*** The quadratic relationship is statistically significant at the 90% confidence level but not at the 95% confidence level. P-value = 0.075
+

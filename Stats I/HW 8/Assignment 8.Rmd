@@ -1,0 +1,175 @@
+---
+title: "Assignment 8"
+author: "Miles Tweed"
+date: "November 1, 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Problem 1
+
+### 6.28
+#### a
+```{r}
+pnorm(2.5, mean=3.41, sd=0.55)
+```
+
+#### b
+```{r}
+z <- (1.5-3.41)/0.55
+print(paste("The z-score for a weight of 1.5kg is", round(z,2)))
+```
+
+#### c
+```{r}
+pnorm(4, mean = 3.41, sd=0.55) - pnorm(2.5, mean = 3.41, sd = 0.55)
+```
+
+#### d
+```{r}
+pnorm(3.6, mean=3.41, sd=0.55)
+```
+
+#### e
+According to the z-score table, a cumulative probability of 0.9599 corresponds to a z-score of 1.75.
+```{r}
+weight <- 3.41 + 1.75*0.55
+print(paste('Max weighs at least',round(weight,2),'kg.'))
+```
+
+### 6.42
+#### a
+
+You must assume that the outcome of x is binary, meaning that there are only two possible outcomes (making the shot and not making the shot), and each shot must have the same probability of success. You must also assume that the outcomes are independent of each other, so making or missing a shot doesn't affect the chances of making subsequent shots.
+
+#### b
+
+$n=10$
+
+$p=0.90$
+
+#### c
+```{r}
+# (i) x = 10
+all.ten <- (factorial(10)/(factorial(10)*(factorial(0))))*((0.90)^10)*((0.10)^0)
+
+#(ii) x = 9
+nine.made <- (factorial(10)/(factorial(10)*(factorial(1))))*((0.90)^10)*((0.10)^1)
+
+#(iii) x = 8,9,10
+eight.made <- (factorial(10)/(factorial(10)*(factorial(2))))*((0.90)^10)*((0.10)^2)
+gt.seven <- eight.made + nine.made + all.ten
+print(paste("(i)", round(all.ten,3), "(ii)", round(nine.made,3), "(iii)",round(gt.seven,3)))
+```
+
+### 6.43
+#### a
+```{r}
+mu = 400*(0.9)
+sigma = sqrt(400*(0.9)*(0.1))
+print(paste("Mean:",mu,"Standard deviation:",sigma))
+```
+
+#### b
+
+By the normal distribution approximation, nearly all (0.997) of the observations will fall within 3 standard deviation of mean.
+```{r}
+low <- mu - 3*sigma
+high <- mu + 3*sigma
+print(paste('0.997 of all observations will be between',
+            round(low,3),"and",round(high,3)))
+```
+
+#### c
+```{r}
+low.prop <- low/400
+
+high.prop <- high/400
+
+print(paste('Between',low.prop,'and',high.prop))
+```
+
+### 6.51
+
+#### a
+
+It is likely that each family member has some amount of influence over whether or not other family members attend church.  Even if "in the long run" any one of them goes %50 of the time, the probability that any one family member attends church each Sunday would likely vary due to this dependence.
+
+#### b
+
+Additionally, depending on the make up of the region there could be vastly different political leanings from one precinct to another. This would mean that the sample was not necessarily representative of the population
+
+#### c
+
+The sample doesn't meet the guideline of being 10% or less of the population so choosing a person from the population affects the probability of choosing a female in later trials.
+
+
+# Problem 2
+
+## Part 1
+#### a
+
+$E[aX + b] = \sum_{i=1}(ax_i+b)P(x_i)$
+
+$= \sum_{i=1}(ax_i\cdot P(x_i) + b \cdot P(x_i))$
+
+$= \sum_{i=1}ax_i \cdot P(x_i) + \sum_{i=1}b\cdot P(x_i)$
+
+$= a\left( \sum_{i=1} x_i \cdot P(x_i)\right) + b\left(\sum_{i=1}P(x_i)\right)$
+
+Since $\sum_{i=1}P(x_i) = 1$
+
+$= a\cdot E(X) + b$
+
+#### b
+*
+$E[Z] = E[\frac{x-\mu}{\sigma}]$
+$=\frac{1}{\sigma}(E[x] - E[\mu])=\frac{1}{\sigma}(E[x] - \mu)$
+$=\frac{1}{\sigma}(\mu - \mu) = 0$
+
+*
+$Var[Z]=Var\left[\frac{x-\mu}{\sigma}\right]=Var\left[\frac{1}{\sigma}(x-\mu)\right]=\frac{1}{\sigma^2}Var[x-\mu]=\frac{1}{\sigma^2}Var[x] = \frac{1}{\sigma^2}\cdot\sigma^2=1$
+
+
+
+## Part 2
+#### a
+
+$E[X] = \sum_{i=0}^{n}x_i\cdot P(X=x_i)$
+
+If a trial has the probability of success p:
+
+$E[X] = \sum_{i=0}^{1}x_i\cdot P(X=x_i) = 0\cdot P(X=0) + 1\cdot P(X=1) 0\cdot (1-p) + 1\cdot p = p$ 
+
+#### b
+$E[X^2] = \sum_{i = 0}^{1}x_i^2 P(X=x_i) = 0^2 \cdot P(X=0) + 1^2 \cdot P(X=1) = 0^2 \cdot (1-p) + 1^2 \cdot p = p$
+
+$Var[X] = E[X^2] - E[X]2 = p - p^2 = p(1-p)$
+
+# Problem 3
+
+## Part 1
+For the pitcher, a success occurs when the batter swings and misses on a slider or change-up. The probability is given as 0.27 and there were 51 trials in the game (pitches that were either sliders or change-ups). In order to consider this situation as a binomial distribution the following must be assumed:
+
+* Each trial only has two possible outcomes. This is a fair assumption considering that the two possibilities are the batter swings or the batter doesn't swing.
+
+* Each trial has the same probability of success. This condition doesn't seem plausible since each trial involves a different batter with different perception and temperament. This would cause the probability that a batter swings at the pitch to vary.
+
+* Each trial is independent. This may be true since the pitcher would likely avoid any pattern of pitches so as not to be predictable.
+
+
+## Part 2
+```{r}
+# a.
+E <- 50*(0.27)
+
+# b. 
+P <- 1 * (0.27)^0 * (0.73)^51
+
+print(paste("The expected value is",E,"and the probability of 0 is",round(P,9)))
+```
+The probability of zero swings and misses in 51 throw is very small which indicates that it is extremely unlikely therefore I would reject the null hypothesis $H_0$.

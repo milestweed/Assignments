@@ -1,0 +1,51 @@
+---
+title: "Homework 3"
+author: "Miles Tweed"
+date: "1/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy=TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60))
+```
+
+```{r eval = FALSE}
+library(tidyverse)
+library(haven)
+mypath <- "/home/mtweed/Documents/New_College/year_2/Data_viz/Data/gss_stata_with_codebook/GSS7218_R3.DTA"
+GSS.STATA <- read_dta(mypath)
+dim(GSS.STATA)
+
+GSS2018 <- GSS.STATA %>% filter(year == 2018) %>% select_if( ~ !all(is.na(.)) )
+```
+
+1) Pick another categorical variable from the 2018 GSS and visualize its distribution
+```{r}
+library(RColorBrewer)
+mycols <- brewer.pal(9, "Blues") %>% rev()
+
+GSS2018.bible <- 
+GSS2018 %>% select(bible) %>%  
+  mutate(bible = as.character(bible)) %>% 
+  transmute(bible=fct_recode(bible, Word_of_God="1", Inspired_Word="2", Book_of_Fables="3", Other = "4")) 
+
+GSS2018.bible %>% ggplot(aes(x = bible, y = 100*(..count../sum(..count..)), fill = bible)) +
+  geom_bar() + ylab('Percent') + xlab('Opinion of Bible') + 
+  labs(title = "GSS: Respondent's Opinion of the Bible",
+       subtitle = "Based on a survey of 2348 US adults.") + 
+  theme(legend.position = 'none') + 
+  scale_y_continuous(expand=c(0,0)) + 
+  coord_cartesian(ylim = c(0,50)) +
+  scale_fill_manual(values=mycols) +
+  ggsave('BiblePlot.png', width = 150, height = 100, units = 'mm')
+
+```
+
+
+2) Prepare a one to two sentence description of the distribution
+
+
+3) Put both on one slide
+

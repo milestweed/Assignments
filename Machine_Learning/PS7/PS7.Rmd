@@ -1,0 +1,617 @@
+---
+title: "Problem Set 7"
+author: "Miles Tweed"
+date: "3/18/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1: ISLR Ch. 6 Ex. 4
+
+**(a)**
+
+***iv.*** The training RSS will increase because the coefficients for the predictors will become reduced to zero and there will be less factors to explain the variance in the data. The flexibility of the model will decrease.
+
+**(b)**
+
+***ii.*** The test RSS will decrease as the variance decreases but will begin increasing again as the bias increases and counteracts the effects of more varying simple models.
+
+**(c)**
+
+***iii.*** The variance steadily increases because the model becomes less flexible leading to widely varying predictions of the same data by making assumption and using very simple models to approximate more complicated data.
+
+**(d)**
+
+***iv.*** Bias steadily decreases as the model becomes less flexible and simpler and more linear solution are used. 
+
+**(e)**
+
+***v.***  The irreducible error is irreducible and remains constant.  It is the variance in the data that can be explained by no model. 
+
+
+# Problem 2: ISLR Ch. 6 Ex. 8
+
+**(a)**
+```{r message=FALSE, warning=FALSE}
+set.seed(202)
+
+X <- rnorm(100, 
+           mean = 1, 
+           sd =sqrt(1.25))
+e <- rnorm(100,
+           mean = 0,
+           sd = sqrt(2))
+```
+
+**(b)**
+```{r message=FALSE, warning=FALSE}
+Y <- X^3 - 5*X^2 + X + 2 + e
+
+df <- data.frame(x = X, x2 = X^2, x3=X^3, y = Y)
+
+head(df)
+```
+
+**(c)**
+```{r message=FALSE, warning=FALSE}
+library(leaps)
+
+df2 <- data.frame(x = X, 
+                 x2 = X^2, 
+                 x3 = X^3, 
+                 x4 = X^4,
+                 x5 = X^5,
+                 x6 = X^6,
+                 x7 = X^7,
+                 x8 = X^8,
+                 x9 = X^9,
+                 x10 = X^10,
+                 y = Y)
+
+regfit.full = regsubsets(y~., data=df2, nvmax = 10)
+
+reg.summary <- summary(regfit.full)
+reg.summary
+
+#plots of RSS, Cp, BIC, and adjusted R^2
+par(mfrow=c(2,2))
+plot(reg.summary$rss, 
+     xlab="Number of Variables", 
+     ylab="RSS", 
+     type="l")
+
+# Model with the highest adjusted R^2
+which.max(reg.summary$adjr2)
+plot(reg.summary$adjr2,
+     xlab="Number of Variables",
+     ylab="Adjusted RSq",
+     type='l')
+points(6,reg.summary$adjr2[6], col="red", cex=2, pch=20)
+
+# Best full model coefficients according to adjusted R^2
+coef(regfit.full, 6)
+
+# Model with the lowest Cp
+which.min(reg.summary$cp)
+plot(reg.summary$cp,
+     xlab="Number of Variables",
+     ylab="Cp",
+     type='l')
+points(6,reg.summary$cp[6], col="red", cex=2, pch=20)
+
+# Best full model coefficients according to Cp
+coef(regfit.full, 6)
+
+# Model with the lowest bic
+which.min(reg.summary$bic)
+plot(reg.summary$bic,
+     xlab="Number of Variables",
+     ylab="BIC",
+     type="l")
+points(3, reg.summary$bic[3],col="red",cex=2,pch=20)
+
+# Best full model coefficients according to BIC
+coef(regfit.full, 3)
+
+```
+
+As shown above, the best model according to adjusted $R^2$ is the model that contains 6 predictors. The best model according to C$_\textit{p}$ is also the model that contains 6 predictors.  The best model according to BIC is the model containing only 3 predictors. Since the 3 variable model contains coefficients that are very close to the true values is seems that BIC did the best job at identifying the most accurate model.
+
+**(d)**
+
+***forward***
+```{r message=FALSE, warning=FALSE}
+regfit.fwd = regsubsets(y~., data=df2, method = "forward", nvmax = 10)
+
+reg.summary.fwd <- summary(regfit.fwd)
+reg.summary.fwd
+
+#plots of RSS, Cp, BIC, and adjusted R^2
+par(mfrow=c(2,2))
+plot(reg.summary.fwd$rss, 
+     xlab="Number of Variables", 
+     ylab="RSS", 
+     type="l")
+
+# Model with the highest adjusted R^2
+which.max(reg.summary.fwd$adjr2)
+plot(reg.summary.fwd$adjr2,
+     xlab="Number of Variables",
+     ylab="Adjusted RSq",
+     type='l')
+points(9,reg.summary.fwd$adjr2[9], col="red", cex=2, pch=20)
+
+# Best forward model coefficients according to adjusted R^2
+coef(regfit.fwd, 9)
+
+# Model with the lowest Cp
+which.min(reg.summary.fwd$cp)
+plot(reg.summary.fwd$cp,
+     xlab="Number of Variables",
+     ylab="Cp",
+     type='l')
+points(6,reg.summary.fwd$cp[6], col="red", cex=2, pch=20)
+
+# Best forward model coefficients according to Cp
+coef(regfit.fwd, 6)
+
+# Model with the lowest bic
+which.min(reg.summary.fwd$bic)
+plot(reg.summary.fwd$bic,
+     xlab="Number of Variables",
+     ylab="BIC",
+     type="l")
+points(3, reg.summary.fwd$bic[3],col="red",cex=2,pch=20)
+
+
+# Best forward model coefficients according to BIC
+coef(regfit.fwd, 3)
+
+```
+
+With forward stepwise selection, BIC identified the model with three predictors and Cp identified the model with 6 predictors as the best which is similar to the Best subset selection results. However, even though the three variable model is the same for forward and best subset, the model with 6 variables are different with the two approaches.  Both 6 variable models contained $x,x^2,x^4$, but the best subset model contained $x^6,x^7,x^8$ while the forward selection model contained $x^3,x^5,x^{10}$. The model selected by adjusted $R^2$ contained 9 predictors in forward subset selection whereas it contained only 6 predictors in best subset selection. Looking at the forward selection subsets, it is apparent that they are more likely to contain the predictors in order of increasing exponent.
+
+***backward***
+```{r message=FALSE, warning=FALSE}
+regfit.bkw = regsubsets(y~., data=df2, method = "backward", nvmax = 10)
+
+reg.summary.bkw <- summary(regfit.bkw)
+reg.summary.bkw
+
+#plots of RSS, Cp, BIC, and adjusted R^2
+par(mfrow=c(2,2))
+plot(reg.summary.bkw$rss, 
+     xlab="Number of Variables", 
+     ylab="RSS", 
+     type="l")
+
+# Model with the highest adjusted R^2
+which.max(reg.summary.bkw$adjr2)
+plot(reg.summary.bkw$adjr2,
+     xlab="Number of Variables",
+     ylab="Adjusted RSq",
+     type='l')
+points(7,reg.summary.bkw$adjr2[7], col="red", cex=2, pch=20)
+
+# Best backward model coefficients according to adjusted R^2
+coef(regfit.bkw, 7)
+
+# Model with the lowest Cp
+which.min(reg.summary.bkw$cp)
+plot(reg.summary.bkw$cp,
+     xlab="Number of Variables",
+     ylab="Cp",
+     type='l')
+points(7,reg.summary.bkw$cp[7], col="red", cex=2, pch=20)
+
+# Best backward model coefficients according to Cp
+coef(regfit.bkw, 7)
+
+# Model with the lowest BIC
+which.min(reg.summary.bkw$bic)
+plot(reg.summary.bkw$bic,
+     xlab="Number of Variables",
+     ylab="BIC",
+     type="l")
+points(6, reg.summary.bkw$bic[6],col="red",cex=2,pch=20)
+
+
+# Best backward model coefficients according to BIC
+coef(regfit.bkw, 6)
+```
+
+In backward subset selection, both adjusted R^2 and C$_\textit{p}$ selected the model with 7 predictors as opposed to the 6 variable model that was selected by both metrics in best subset.  BIC selected the model with 6 predictors in backwards selection whereas it selected the 3 variable model in best subsets.  Again, the 6 variable model is different in backward selection since it contains $x^9$ and contained $x^8$ in best subset.  All of the models selected in backwards subset selection contained more variable than all of the models selected in best subset selection likely because the model has a higher affinity to including higher order terms when we know that lower order terms are more characteristic of the true function.
+
+**(e)**
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+# Create matrix of predictors
+x <- model.matrix(y~.,df2)[,-1]
+y <- df2['y'] %>% as_vector()
+
+# train/test split
+set.seed(1)
+train <- sample(c(TRUE,FALSE), nrow(x), rep=TRUE)
+test <- (!train)
+
+# Grid of lambda values to try
+grid <- 10^seq(10,-2,length=100)
+
+library(glmnet)
+lasso.mod = glmnet(x[train,],y[train],alpha=1, lambda=grid)
+
+# plot of the coefficient reduction with increasing l2 norm
+par(mfrow=c(1,2))
+plot(lasso.mod)
+
+# cross-validation to find the optimal lambda
+set.seed(1)
+cv.out <- cv.glmnet(x[train,],y[train],alpha=1)
+
+#Plot of cross-validation error 
+plot(cv.out)
+
+# best lambda after cross-validation
+bestlam <- cv.out$lambda.min
+bestlam
+
+# Prediction on test set and estimated MSE
+lasso.pred <- predict(lasso.mod,s=bestlam,newx = x[test,])
+mean((lasso.pred-y[test])^2)
+
+# Resulting coefficients are sparse
+out <- glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef <- predict(out,type='coefficients',s=bestlam)[1:11,]
+lasso.coef
+
+# Removal of coefficients that have been reduced to 0
+lasso.coef[lasso.coef!=0]
+```
+
+The lasso model had a cross-validation error of 744.82 using the optimal value of lambda 0.0077.  Several of the coefficients were reduced to zero and the final model contained only $x,\ x^2,\ x^3,\ x^5,$ and $x^{10}$.  Although the value of lambda is quite small, more than half of the predictors were removed from the final model.
+
+**(f)**
+
+```{r message=FALSE, warning=FALSE}
+Y2 <- 3.5 - 2.33 * X^7 + e
+
+df3 <- data.frame(x = X, 
+                 x2 = X^2, 
+                 x3 = X^3, 
+                 x4 = X^4,
+                 x5 = X^5,
+                 x6 = X^6,
+                 x7 = X^7,
+                 x8 = X^8,
+                 x9 = X^9,
+                 x10 = X^10,
+                 y = Y2) 
+
+######################################
+##       BEST SUBSET SELECTION      ##
+######################################
+
+regfit.full = regsubsets(y~., data=df3, nvmax = 10)
+
+reg.summary <- summary(regfit.full)
+reg.summary
+
+#plots of RSS, Cp, BIC, and adjusted R^2
+par(mfrow=c(2,2))
+plot(reg.summary$rss, 
+     xlab="Number of Variables", 
+     ylab="RSS", 
+     type="l")
+
+# Model with the highest adjusted R^2
+which.max(reg.summary$adjr2)
+plot(reg.summary$adjr2,
+     xlab="Number of Variables",
+     ylab="Adjusted RSq",
+     type='l')
+points(5,reg.summary$adjr2[5], col="red", cex=2, pch=20)
+
+# Best full model coefficients according to adjusted R^2
+coef(regfit.full, 5)
+
+# Model with the lowest Cp
+which.min(reg.summary$cp)
+plot(reg.summary$cp,
+     xlab="Number of Variables",
+     ylab="Cp",
+     type='l')
+points(3,reg.summary$cp[3], col="red", cex=2, pch=20)
+
+
+# Best full model coefficients according to Cp
+coef(regfit.full, 3)
+
+
+# Model with the lowest bic
+which.min(reg.summary$bic)
+plot(reg.summary$bic,
+     xlab="Number of Variables",
+     ylab="BIC",
+     type="l")
+points(1, reg.summary$bic[1],col="red",cex=2,pch=20)
+
+
+# Best full model coefficients according to BIC
+coef(regfit.full, 1)
+
+
+######################################
+##             THE LASSO            ##
+######################################
+
+# Create matrix of predictors
+x <- model.matrix(y~.,df3)[,-1]
+y <- df3['y'] %>% as_vector()
+
+# train/test split
+set.seed(1)
+train <- sample(c(TRUE,FALSE), nrow(x), rep=TRUE)
+test <- (!train)
+
+# Grid of lambda values to try
+grid <- 10^seq(10,-2,length=100)
+
+lasso.mod = glmnet(x[train,],y[train],alpha=1, lambda=grid)
+
+par(mfrow=c(1,2))
+# plot of the coefficient reduction with increasing l2 norm
+plot(lasso.mod)
+
+# cross-validation to find the optimal lambda
+set.seed(1)
+cv.out <- cv.glmnet(x[train,],y[train],alpha=1)
+
+#Plot of cross-validation error 
+plot(cv.out)
+
+# best lambda after cross-validation
+bestlam <- cv.out$lambda.min
+bestlam
+
+# Prediction on test set and estimated MSE
+lasso.pred <- predict(lasso.mod,s=bestlam,newx = x[test,])
+mean((lasso.pred-y[test])^2)
+
+# Resulting coefficients are sparse
+out <- glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef <- predict(out,type='coefficients',s=bestlam)[1:11,]
+lasso.coef
+
+# Removal of coefficients that have been reduced to 0
+lasso.coef[lasso.coef!=0]
+```
+
+Every model selected using best subset via adjusted $R^2$, C$_\textit{p}$, or BIC contained the variable $x^7$.  The model selected by best subset and BIC is the closest to the true function and contains only the $x^7$ predictor.  Lasso, on the other hand, chose a more complicated model that contained the 5 highest order predictors ($x^6,\ x^7,\ x^8,\ x^9,\ \text{and}\ x^{10}$), but interestingly, the intercept and coefficient for $x^7$ are very close to the true values while the coefficients for the other predictors, while non-zero, are very small. The optimal lambda value for the lasso is 18.5 and the cross-validation MSE is 57486.8.
+
+# Problem 3: ISLR Ch. 6 Ex. 11
+
+```{r message=FALSE, warning=FALSE}
+library(MASS)
+
+# List of variable in the Boston Dataset
+names(Boston)
+```
+
+**(a)**
+```{r message=FALSE, warning=FALSE}
+######################################
+##       BEST SUBSET SELECTION      ##
+######################################
+
+regfit.full = regsubsets(crim~., data=Boston, nvmax = 13)
+
+reg.summary <- summary(regfit.full)
+reg.summary
+
+#plots of RSS, Cp, BIC, and adjusted R^2
+par(mfrow=c(2,2))
+plot(reg.summary$rss, 
+     xlab="Number of Variables", 
+     ylab="RSS", 
+     type="l")
+
+# Model with the highest adjusted R^2
+which.max(reg.summary$adjr2)
+plot(reg.summary$adjr2,
+     xlab="Number of Variables",
+     ylab="Adjusted RSq",
+     type='l')
+points(9,reg.summary$adjr2[9], col="red", cex=2, pch=20)
+
+# Best full model coefficients according to adjusted R^2
+coef(regfit.full, 9)
+
+# Model with the lowest Cp
+which.min(reg.summary$cp)
+plot(reg.summary$cp,
+     xlab="Number of Variables",
+     ylab="Cp",
+     type='l')
+points(8,reg.summary$cp[8], col="red", cex=2, pch=20)
+
+
+# Best full model coefficients according to Cp
+coef(regfit.full, 8)
+
+
+# Model with the lowest bic
+which.min(reg.summary$bic)
+plot(reg.summary$bic,
+     xlab="Number of Variables",
+     ylab="BIC",
+     type="l")
+points(3, reg.summary$bic[3],col="red",cex=2,pch=20)
+
+
+# Best full model coefficients according to BIC
+coef(regfit.full, 3)
+
+# BEST SUBSET CROSS-VALIDATION
+predict.regsubsets <- function(object, newdata, id, ...){
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object, id=id)
+  xvars <- names(coefi)
+  mat[,xvars] %*% coefi
+}
+
+# 10 fold cross-validation
+k <- 10
+set.seed(1)
+
+folds <- sample(1:k, nrow(Boston), replace = TRUE)
+cv.errors <- matrix(NA, k, 13, dimnames = list(NULL, paste(1:13)))
+
+
+for (j in 1:k){
+  best.fit <- regsubsets(crim~., data = Boston[folds!=j,],nvmax=13)
+  
+  for (i in 1:13){
+    pred <- predict.regsubsets(best.fit, Boston[folds==j, ], id=i)
+    cv.errors[j,i] <- mean( (Boston$crim[folds==j]-pred)^2)
+  }
+}
+
+
+# Lowest CV MSE for Best Subset Test error
+mean.cv.errors <- apply(cv.errors, 2, mean)
+min(mean.cv.errors)
+
+par(mfrow=c(1,1))
+plot(mean.cv.errors, type='b')
+
+
+######################################
+##         RIDGE REGRESSION         ##
+######################################
+
+x <- model.matrix(crim~.,Boston)[,-1]
+y <- Boston$crim
+
+
+grid <- 10^seq(10,-2,length=100)
+
+ridge.mod <- glmnet(x,y,alpha=0,lambda=grid)
+
+# CROSS-VALIDATION ON RIDGE REGRESSION
+# Estimating the test error using random subsets to split the data
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x)/2)
+test <- (-train)
+y.test <- y[test]
+
+# Built in cross validation function
+cv.out <- cv.glmnet(x[train,],y[train],alpha=0)
+plot(cv.out)
+
+# The lambda the results in the smallest cross-validation error
+bestlam <- cv.out$lambda.min
+bestlam
+
+# MSE from ridge regression
+ridge.pred <- predict(ridge.mod, s=bestlam, newx = x[test,])
+mean((ridge.pred-y.test)^2)
+
+# Refit the regression on the full dataset using the best lambda
+out <- glmnet(x,y,alpha=0)
+
+# Coefficients of the best ridge regression fit
+predict(out, type='coefficients',s=bestlam)[1:14,]
+
+
+
+######################################
+##             THE LASSO            ##
+######################################
+
+lasso.mod = glmnet(x[train,],y[train],alpha=1, lambda=grid)
+
+par(mfrow=c(1,2))
+# plot of the coefficient reduction with increasing l2 norm
+plot(lasso.mod)
+
+# cross-validation to find the optimal lambda
+set.seed(1)
+cv.out <- cv.glmnet(x[train,],y[train],alpha=1)
+
+#Plot of cross-validation error 
+plot(cv.out)
+
+# best lambda after cross-validation
+bestlam <- cv.out$lambda.min
+bestlam
+
+# Prediction on test set and estimated MSE
+lasso.pred <- predict(lasso.mod,s=bestlam,newx = x[test,])
+mean((lasso.pred-y[test])^2)
+
+# Resulting coefficients are sparse
+out <- glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef <- predict(out,type='coefficients',s=bestlam)[1:14,]
+lasso.coef
+
+# Removal of coefficients that have been reduced to 0
+lasso.coef[lasso.coef!=0]
+
+
+
+######################################
+##  PRINCIPAL COMPONENT REGRESSION  ##
+######################################
+
+library(pls)
+set.seed(2)
+par(mfrow=c(1,1))
+
+pcr.fit <- pcr(crim~.,data=Boston,scale=TRUE,validation="CV")
+
+summary(pcr.fit)
+
+validationplot(pcr.fit, val.type = "MSEP")
+
+#PCR on training data evaluating the test set performance
+set.seed(1)
+pcr.fit <- pcr(crim~., 
+               data=Boston, 
+               subset=train, 
+               scale=TRUE, 
+               validation="CV")
+
+
+validationplot(pcr.fit,val.type = "MSEP")
+
+pcr.pred <- predict(pcr.fit, x[test,],ncomp=13)
+mean((pcr.pred-y.test)^2)
+
+pcr.fit <-  pcr(y~x, scale=TRUE,ncomp=13)
+summary(pcr.fit)
+
+
+```
+
+
+Best subsets had a cross-validation test MSE of 42.46 using a model with 12 predictors. The best subset according to adjusted $R^2$ containing 9 variables, the best subset according to C$_\textit{p}$ containing 8 variables and the best subset according to BIC containing 3 variables.
+
+Ridge regression, using the optimal lambda value of 0.59 had a cross-validation MSE of 38.01 and contained all of the predictors. All of the coefficients had an absolute value between 0 and 1 which is explained by the fact that the predictor values are standardized. This has important implication on the interpretability of the model.
+
+The lasso had a cross-validation MSE of 40.99 using a lambda of 0.05.  The final model contained all of the predictors except age.
+
+The principal component analysis model had a cross-validation MSE of 41.55 and the most variance was explained with models that contained every predictor.
+
+**(b)**
+
+I would propose that if the goal is solely to make predictions the ridge regression model should be chosen since it performed best on the test data and had the lowest cross-validation MSE. However, if interpretability was a concern I would choose the lasso regression model since it had the second lowest cross-validation MSE, was able to eliminate one of the predictors, and the coefficients are scaled in a way that they could be more easily explained.
+
+**(c)**
+
+The ridge regression model does contain all of the features because this method of subset selection is trained on the full model and only reduces the coefficients closer to zero but rarely, if ever, reduces them to exactly zero.
+
+The lasso model does not contain the age feature because, even though the model was trained using every feature, the coefficient for the age variable was reduces to exactly zero which effectively removed it from the model.

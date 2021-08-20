@@ -1,0 +1,148 @@
+---
+title: "Homework2"
+author: "Miles Tweed"
+date: "1/24/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# 3. Practicing with the Titanic data
+
+## 3.1 Find the overall proportion of males and females who survived the sinking of the Titanic.
+(Ignore whether child or adult.)
+```{r}
+mydata <- as.data.frame(Titanic)
+
+mydata %>% 
+  count(Sex, Survived, wt = Freq) %>% 
+  group_by(Sex) %>%  
+  mutate(Total=sum(n), Proportion = n/Total) %>% 
+  filter(Survived == 'Yes') %>% 
+  rename(Count = 'n')
+```
+
+## 3.2 Plot the overall proportion of survival in a bar graph, by gender
+```{r}
+
+mydata %>% 
+  count(Sex, Survived, wt = Freq) %>% 
+  group_by(Sex) %>%  
+  mutate(tot=sum(n), prop = n/tot) %>%
+  filter(Survived == 'Yes') %>% 
+  ggplot(aes(x = Sex, y = prop, fill = Sex)) + 
+  geom_bar(stat = 'identity', width = 0.7) +
+  labs(title = 'Titanic Survival By Gender') + 
+  ylab('Proportion Survived') +
+  theme(legend.position = 'none')
+```
+
+## 3.3 Find the overall proportion of males and females who survived the sinking of the Titanic, **by class booked**.
+(Ignore whether child or adult.)
+```{r}
+# because we want props of survival by sex and class, we count by sex, class and survival
+
+mydata %>% 
+  count(Sex, Class, Survived, wt=Freq) %>% 
+  group_by(Sex, Class) %>% 
+  mutate(Total = sum(n), Proportion = n/Total) %>% 
+  filter(Survived=='Yes') %>% 
+  rename(Count = 'n')
+
+
+```
+
+
+## 3.4 Plot the survival proportions by class
+There are a couple of options: For each class, we could compare males vs. females:
+```{r}
+mydata %>% 
+  count(Sex, Class, Survived, wt=Freq) %>% 
+  group_by(Sex, Class) %>% 
+  mutate(Total = sum(n), Proportion = n/Total) %>% 
+  filter(Survived=='Yes') %>% 
+  rename(Count = 'n') %>% 
+  ggplot(aes(x = Class, y = Proportion, fill = Sex)) + 
+  geom_bar(stat = 'identity', position = 'dodge') +
+  labs(title = 'Proportion of Survival by class')
+
+```
+
+Or, we could compare the proportions surviving in each class, separately for males and females:
+```{r}
+mydata %>% 
+  count(Sex, Class, Survived, wt=Freq) %>% 
+  group_by(Sex, Class) %>% 
+  mutate(Total = sum(n), Proportion = n/Total) %>% 
+  filter(Survived=='Yes') %>% 
+  rename(Count = 'n') %>% 
+  ggplot(aes(x = Sex, y = Proportion, fill = Class)) + 
+  geom_bar(stat = 'identity', position = 'dodge') +
+  labs(title = 'Proportion of Survival by class')
+```
+
+## 3.5 Same as 3.3, but now also adjust for whether child or adult (the `age` variable).
+So, find the proportion of passengers who survived, by sex, class and whether child or adult.
+```{r}
+mydata %>% 
+  count(Sex, Class, Survived, Age, wt=Freq) %>% 
+  group_by(Sex, Class, Age) %>% 
+  mutate(Total = sum(n), Proportion = n/Total) %>% 
+  filter(Survived == 'Yes')
+
+```
+
+Or, more succinctly, using `add_count`:
+```{r}
+mydata %>% 
+  add_count(Class,Sex,Age, wt = Freq) %>% 
+  group_by(Class, Sex, Age) %>% 
+  mutate(Proportion = Freq/n) %>% 
+  filter(Survived == 'Yes')
+```
+
+
+## 3.6 Plot the proportions when adjusting for all three variables (Sex, Class, Age): `facet_grid`
+When comparing the proportions, we are now adusting for three variables: Sex, Class and Age. To get all these in one plot, we will assign one variable to be a row variable, one variable to be a column variable, and a third to be the variable that is displayed on the x-axis. Naturally, there are many possibilities. Let's first construct a graph that, similar to the second to last above, has sex on the x-axis, class as the column variable and age as the row variable. We assign the row and column variable in `facet_grid`, which we now use instead of `facet_wrap`:
+```{r}
+mydata %>% 
+  add_count(Class,Sex,Age, wt = Freq) %>% 
+  group_by(Class, Sex, Age) %>% 
+  mutate(Proportion = Freq/n) %>% 
+  filter(Survived == 'Yes', !is.na(Proportion)) %>% 
+  ggplot(aes(x = Sex, y = Proportion, fill = Sex)) + 
+  geom_bar(stat = 'identity') + 
+  facet_grid(rows = vars(Age), cols = vars(Class)) + 
+  theme(legend.position = 'none')
+```
+
+If you want the label of the column variable appear on the left side instead of on the right-side, use the `switch='y'` options:
+```{r}
+mydata %>% 
+  add_count(Class,Sex,Age, wt = Freq) %>% 
+  group_by(Class, Sex, Age) %>% 
+  mutate(Proportion = Freq/n) %>% 
+  filter(Survived == 'Yes', !is.na(Proportion)) %>% 
+  ggplot(aes(x = Sex, y = Proportion, fill = Sex)) + 
+  geom_bar(stat = 'identity') + 
+  facet_grid(rows = vars(Age), cols = vars(Class), switch = 'y') + 
+  theme(legend.position = 'none')
+```
+
+Try other versions of this plot, by changing what you assign for row, column and x-axis variable!
+
+```{r}
+mydata %>% 
+  add_count(Class,Sex,Age, wt = Freq) %>% 
+  group_by(Class, Sex, Age) %>% 
+  mutate(Proportion = Freq/n) %>% 
+  filter(Survived == 'Yes', !is.na(Proportion)) %>% 
+  ggplot(aes(x = Class, y = Proportion, fill = Class)) + 
+  geom_bar(stat = 'identity') + 
+  facet_grid(rows = vars(Age), cols = vars(Sex)) + 
+  theme(legend.position = 'none')
+```
+

@@ -1,0 +1,223 @@
+---
+title: "Homework 3"
+author: "Miles Tweed"
+output: pdf_document
+---
+
+```{r, include=FALSE}
+library(ISwR)
+attach(cystfibr)
+#str(cystfibr)
+attach(juul)
+juul_clean <- subset(juul, !is.na(sex) & !is.na(igf1))
+#str(juul_clean)
+```
+# Problem 1
+## 1.1
+```{r, warning=FALSE}
+# These empty vectors will be filled with the values calculated in the looping construct.
+# They will be used to create a matrix object in later exercises.
+mean_vec <- vector()
+sd_vec <- vector()
+
+# The first for loop iterates over every column
+for (i in 1:length(cystfibr)) {
+  # the mean for the i'th column is calculated and printed
+  cf_mean <- sum(cystfibr[i])/length(cystfibr[,1])
+  print(paste('The mean for column', names(cystfibr)[i], 'is: ', cf_mean))
+  # This vector will contained the squared differences between eachvalue and the mean
+  x = vector()
+  # This for loop iterates over each value in the i'th column
+  for (j in 1:length(cystfibr[,i])) {
+    # the squared difference from the mean is calculated for each value and stored in x
+    diff <- (cystfibr[j,i]-cf_mean)^2
+    x = append(x, diff)
+  }
+  # The sample standard deviation is the square root of the sum of the values in x
+  # divided by the length minus one. The standard deviation is printed.
+  cf_sd <- sqrt(sum(x)/(length(cystfibr[,i])-1))
+  print(paste('The standard deviation for column', names(cystfibr)[i], 'is: ', cf_sd))
+  
+  # The mean and sd for each colum is stored in these variables to be used later.
+  mean_vec <- append(mean_vec, cf_mean)
+  sd_vec <- append(sd_vec, cf_sd)
+  }
+
+```
+
+## 1.2
+```{r}
+# A matrix with dimensions [10,2] is created using the 
+# values stored in the looping construct.
+cf_matrix <- matrix(c(mean_vec, sd_vec), nrow = 10, ncol = 2)
+# The row names are the variable names from the original data frame
+rownames(cf_matrix) <- names(cystfibr)
+# The column names are added
+colnames(cf_matrix) <- c('mean', 'sd')
+cf_matrix
+```
+
+
+## 1.3
+### a)
+The first 10 observations are:
+```{r}
+head(cystfibr, n = 10L)
+```
+
+### b)
+Observations #5, 10, and 15 are:
+```{r}
+cystfibr[c(5, 10, 15),]
+```
+
+### c)
+The last 10 observations are:
+```{r}
+tail(cystfibr, n = 10L)
+```
+
+### d)
+The name of the first variable is:
+```{r}
+names(cystfibr[1])
+```
+And it contains the values:
+```{r}
+cystfibr[,1]
+```
+
+### e)
+The values #5, 10, and 15 from the first variable are:
+```{r}
+cystfibr[c(5,10,15),1]
+```
+
+### f)
+The information for people with above average height is:
+```{r}
+cystfibr[cystfibr$height > mean(cystfibr$height),]
+```
+
+## 1.4
+```{r}
+head(cystfibr[order(cystfibr$age, decreasing = T),], n = 5L)
+```
+
+## 1.5
+```{r}
+subset(cystfibr, cystfibr$age > mean(cystfibr$age) & cystfibr$height > mean(cystfibr$height))
+```
+
+## 1.6
+I plotted height versus weight because I assumed that there might be some correlation. Indeed, the two variables seem to have a positive correlation in that and increase in one corresponds to an increase in the other.
+```{r}
+plot(cystfibr$height, cystfibr$weight,xlab = 'Height', ylab = 'Weight')
+```
+
+
+# Problem 2
+I created a loop that adds 1 to a counter variable for every occurrence of a male with igf1 greater than 400.
+```{r}
+# The count variable is initialized with the value of 0
+count <- 0
+# This iterates over each record in the sex column
+for (i in 1:length(juul_clean$sex)) {
+  # This condition checksthat the sex is male
+  if (juul_clean[i,'sex'] == 1) {
+    # This condition checks that the igf1 variable is 
+    # greater than 400
+    if (juul_clean[i,"igf1"] > 400){
+      # The counter variable is only increased if both 
+      # condition are met
+        count = count + 1      
+    }
+  }
+}
+print(paste('The number of males with an insulin-like growth factor greater than 400 is:', count))
+```
+
+I used the 'ifelse' function to perform a vectorized conditional operation on the data set. This operation returns a one if both conditions are met and a zero otherwise.  Finally, the resulting vector is summed.
+```{r}
+sum(ifelse(juul_clean$sex == 1 & juul_clean$igf1 > 400, 1, 0))
+```
+
+To count the desired values using subsetting I first used direct indexing using conditional statements.
+```{r}
+length(juul_clean[juul_clean$sex == 1 & juul_clean$igf1 > 400,'sex'])
+```
+
+Next, I used the subset function.
+```{r}
+length(subset(juul_clean[juul_clean$sex == 1,], igf1 > 400, sex) == 1)
+```
+All queries resulted in similar values.
+
+
+# Problem 3
+## 3.3
+### a) 
+The response variable is happiness and the explanatory variable is income.
+
+### b) 
+```{r}
+nH <- c(21/360, 96/850, 143/604, 260/1814)
+H <- c(213/360, 506/850, 347/604, 1006/1814)
+vH <- c(126/360, 248/850, 114/604, 488/1814)
+g_matrix <- matrix(c(nH, H, vH), nrow = 4, ncol = 3)
+row.names(g_matrix) <- c('Above Average', 'Average', 'Below Average', 'Total')
+colnames(g_matrix) <- c('Not Too Happy', 'Pretty Happy', 'Very Happy')
+g_matrix
+```
+
+### c)
+Looking the the value in the 'Total' row of the 'Very Happy' column in the conditional proportions table above, the total proportion of individuals that report being very happy is about 27%.
+
+
+## 3.61
+### a) 
+The response variable is assessed value and the explanatory variable is square feet.
+
+### b) 
+The response variable is party preference and the explanatory variable is gender.
+
+### c) 
+The response variable is annual income and the explanatory variable is number of years of education.
+
+### d) 
+The response variable is the number of pounds lost on a diet and the explanatory variable is the type of diet.
+
+## 3.63
+### a)
+```{r}
+lad_yes <- c(621/808, 834/979)
+lad_no <- c(187/808, 145/979)
+g_matrix <- matrix(c(lad_yes, lad_no), nrow =2, ncol = 2)
+row.names(g_matrix) <- c('Male', 'Female')
+colnames(g_matrix) <- c('Yes', 'No')
+g_matrix
+```
+
+### b) 
+Looking at the conditional proportion table above, Females are more likely to report believing in a life after death by 8 percentage points. This value is the difference of proportions and is calculated by subtracting the proportion of male/yes responses from the female/yes responses (0.85-0.77=0.08).  The ratio of proportions would the the ratio of these two values (0.85/0.77=1.1).  These values indicate that there is not a large difference between the responses from males and females. Looking at the difference of proportion, 8 percentage points is not a very sizable increase, but more tellingly, the ratio indicates that the two values are almost identical since it is very close to one.
+
+## 3.14
+### a)
+The most strongly correlated variables have a correlation close to one or negative one. The value of -0.07 is very close to zero, therefore, 'political ideology' and 'times a week reading a newspaper' are weakly correlated.  The correlation value can be thought of as the slop of a line-of-best-fit for the scatter plot of the two variables. A correlation of zero would indicate a horizontal line and an increase in one variable would not translate to and increase in the other. Conversely, a correlation of one would indicate that an increase in one variable would indicate a proportionate increase in the other. 
+
+### b)
+'Religiosity' has a stronger correlation to 'political ideology' because 0.58 is closer to one than -0.07.  Using the reasoning outlined above, the slope of the linear correlation for 'religiosity' and 'political ideology' would be steeper than the one for 'times a week reading a newspaper' and 'political ideology'.
+
+## 3.16
+1. c
+
+2. a
+
+3. d
+
+4. b
+
+
+
+
+

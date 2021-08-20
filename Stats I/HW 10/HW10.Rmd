@@ -1,0 +1,280 @@
+---
+title: "Homework 10"
+author: "Miles Tweed"
+date: "11/21/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Problem 1
+
+**(c)**
+```{r}
+library(MASS)
+library(boot)
+
+x.median <- function(x,i) { median(x[i,'medv']) }
+
+res.med <- boot(data = Boston, 
+            statistic = x.median, 
+            R = 10000)
+
+print(paste('Median value using bootstrap:',res.med$t0))
+```
+
+**(d)**
+```{r}
+meds <- res.med$t
+
+x.se2 <- function(x,i) { sd(x[i,1])/sqrt(length(x[i,1])) }
+
+res.med.se <- boot(data = Boston, 
+            statistic = x.se2, 
+            R = 10000)
+
+print(paste('Standard error of median using bootstrap:',round(res.med.se$t0,3)))
+```
+
+**(e)**
+
+```{r}
+bias <- mean(res.med$t) - median(Boston$medv)
+unbiased.est <- res.med$t - bias
+c(quantile(unbiased.est, 0.025), quantile(unbiased.est, 0.975))
+```
+
+Based on the bootstrap estimate which was adjusted for bias, we are 95% confident that the population median is within the range 20.1 - 21.9. In other words, if we were to sample the population 100 times we would only expect to calculate a median outside of this range for 5 of those samples using the bootstrap method.
+
+**(f)**
+```{r}
+quant.0.9 <- function(x,i) { quantile(x[i,'medv'], 0.9) }
+
+mu.hat.0.9 <- boot(data = Boston, 
+            statistic = quant.0.9, 
+            R = 10000)
+
+print(paste('0.9-quantile value using bootstrap:',mu.hat.0.9$t0))
+```
+
+**(g)**
+```{r}
+# install.packages("latex2exp")
+library(latex2exp)
+hist(mu.hat.0.9$t, main = TeX('Distribution of $\\hat{\\mu}_{0.9}$'),
+     xlab=TeX('$\\hat{\\mu}_{0.9}$'))
+
+bias <- mean(mu.hat.0.9$t) - quantile(Boston$medv, 0.9)
+unbiased.est <- mu.hat.0.9$t - bias
+c(quantile(unbiased.est, 0.025), quantile(unbiased.est, 0.975))
+
+```
+If we were to sample the population 100 times, we would expect the 0.9-quantile, as calculated using the bootstrap method, to occur outside of the range 32.8-36.8 for only 5 of the samples.  In other words, we are 95% confident that the 0.9-quantile will occur within this range.
+
+# Problem 2
+```{r}
+my.t.test <- function(vec, mu, ci.lvl=0.95){
+  n <- length(vec)
+  df <- n-1
+  s <-  sd(vec)
+  se <-  s/sqrt(n)
+  x.bar <- mean(vec)
+  TS <-  (x.bar - mu)/se
+  p <- 2*pt(TS, df=df, lower.tail = FALSE)
+  if (ci.lvl == 0.95){
+    ci.low <- x.bar - 1.96*se
+    ci.high <- x.bar + 1.96*se
+    ci = c(ci.low,ci.high)
+  } else if (ci.lvl==0.99) {
+    ci.low <- x.bar - 2.576*se
+    ci.high <- x.bar + 2.576*se
+    ci = c(ci.low,ci.high)
+  }
+  return(list('t'=TS, 'df'=df, 'p.value'=p, 'CI'=ci, 'sample.estimates'=x.bar))
+}
+
+my.t.test(c(1:10),mu=5) # Exemplary call and output for your function.
+
+t.test(c(1:10), mu=5) # Comparative t.test() call.
+
+
+my.t.test(c(1:10), mu=5, ci.lvl=0.99) # Example for non-typical CI level.
+
+
+t.test(c(1:10), mu=5, conf.level=0.99) # Compare output with similar t.test() call.
+
+
+```
+
+All of the values from my test were approximately  equal to the values calculated using t.test except for the confidence intervals.  Perhaps this is because t.test uses a different method for calculating the standard error.
+
+# Problem 3
+
+```{r, echo = F}
+hours <- read.csv(file.path('/home/mtweed/Documents/New_College/year_1/StatInfForDS/Statistical_inference/Datasets/workweek2012.csv'))
+``` 
+
+**(a)**
+ For the t-test, $H_0:\mu = 40$ hours will be the null hypothesis and I will run a two tailed test for the alternative hypothesis $H_a:\mu \ne 40$ hours.
+```{r}
+test <- t.test(hours[,2], mu=40, alternative = 'two.sided')
+print(test)
+mu <- 40
+x.bar <- mean(hours[,2])
+s <- sd(hours[,2])
+d = abs(x.bar-mu)/s
+print(paste("The Cohen's d score is", round(d,3)))
+```
+
+From the values found above, the P-value suggests that we should fail to reject the null hypothesis since the difference of the sample mean from $H_0$ is not statistically significant. The Cohen's d value is less than 0.02 which suggests that the result is not practically significant.  The theoretical mean falls within the calculated 95% confidence interval and, therefore, agrees with the hypothesis test.
+
+**(b)**
+Again, I will conduct a two tail t-test where the null hypothesis is $H_0:\mu = 40$ hours and the alternative hypothesis is $H_a:\mu \ne 40$ hours.
+```{r}
+hours.male <- hours[hours[,1]=='Male',2]
+test <- t.test(hours.male, mu=40, alternative = 'two.sided')
+print(test)
+mu <- 40
+x.bar <- mean(hours.male)
+s <- sd(hours.male)
+d = abs(x.bar-mu)/s
+print(paste("The Cohen's d score is", round(d,3)))
+
+```
+The p-value suggests that we reject the null hypothesis in favor of the alternative since the p-value is less than 0.05 which suggests that the result is statistically significant. The 95% confidence interval agrees with the t-test since the theoretical mean is below the lower bound.  The Cohen's d-score suggests a small effect size.
+
+**(c)**
+
+***For part A***
+```{r}
+hrs.five <- fivenum(hours[,2])
+hrs.iqr <- IQR(hours[,2])
+hrs.min <- hrs.five[1]
+hrs.lq <- hrs.five[2]
+hrs.med <- hrs.five[3]
+hrs.uq <- hrs.five[4]
+hrs.max <- hrs.five[5]
+
+out.low <- length(hours[hours[,2]<hrs.lq-(1.5*hrs.iqr),2])
+out.high <- length(hours[hours[,2]>hrs.uq+(1.5*hrs.iqr),2])
+
+print(paste("There are",out.low,'outliers 1.5*IQR below the 1st quartile'))
+print(paste("There are",out.high,'outliers 1.5*IQR above the 3rd quartile'))
+```
+
+***For part b***
+```{r}
+m.hrs.five <- fivenum(hours.male)
+m.hrs.iqr <- IQR(hours.male)
+m.hrs.min <- m.hrs.five[1]
+m.hrs.lq <- m.hrs.five[2]
+m.hrs.med <- m.hrs.five[3]
+m.hrs.uq <- m.hrs.five[4]
+m.hrs.max <- m.hrs.five[5]
+
+m.out.low <- length(hours.male[hours.male<hrs.lq-(1.5*hrs.iqr)])
+m.out.high <- length(hours.male[hours.male>hrs.uq+(1.5*hrs.iqr)])
+
+print(paste("There are",m.out.low,'outliers 1.5*IQR below the 1st quartile'))
+print(paste("There are",m.out.high,'outliers 1.5*IQR above the 3rd quartile'))
+```
+
+While the t distribution is robust when analysing samples that are not normally distributed, the test statistic does rely on the sample mean $\bar{x}$ and the sample standard deviation $s$ which are both affected by extreme outliers.  This means that we should be concerned about the legitimacy in this case.
+
+# Problem 4
+
+**9.29**
+
+**(a)**
+ Since the sample size is 20, the degrees of freedom would be 19.
+ 
+$H_a:\mu \ne 100$
+```{r}
+2*pt(2.4,df = 19, lower.tail = F)
+```
+ 
+**(b)**
+ $H_a:\mu > 100$
+```{r}
+pt(2.4, df = 19, lower.tail = FALSE) 
+```
+ 
+**(c)**
+ $H_a:\mu < 100$
+```{r}
+pt(2.4, df = 19)
+```
+
+**9.47**
+
+**(a)**
+ If $\alpha = 0.05$ the decision would be to reject the null hypothesis in favor of the alternative since the P-value or 0.02 is less than 0.05.  This is because the sample statistic would be very unusual if $H_0$ were true (i.e. it would be outside of the 95% confidence interval).
+ 
+**(b)**
+ If this was in error and $H_0$ were true it would be a Type I error.
+ 
+**(c)**
+ If the significance level was 0.01 we would accept the null hypothesis since 0.02 is larger than 0.01 (i.e. the sample statistic is within the 99% confidence interval). It would be a Type II error if the null hypothesis was actually false. 
+
+
+**9.49**
+
+**(a)**
+ If $H_0$ is rejected it indicates the observed amount of adverse reaction to the medication would be unusual if the medicine was, indeed, safe within the specified confidence interval.
+
+**(b)**
+ If the decision to reject the null hypothesis was in error (Type I error) it would indicate that the medicine could be considered safe and the observed amount of adverse reactions was an unusual observation. This would be a safe error to make since it is better to avoid possible harm in medicine.
+
+**(c)**
+ If we fail to reject $H_0$ it indicated the the observed amount of adverse reaction to the medicine would not be unusual if the medication was safe within a specified confidence interval.
+ 
+ **(d)**
+  If the decision not to reject $H_0$ was in error (Type II error) it would indicate that the medicine was actually not safe and either the low number of adverse reaction was and unusual observation for an unsafe medicine or the significance level was set too high to avoid a false negative.  This would be an unsafe error to make since it could lead to an unsafe medication being administered to patients. It would generally be better to make the null hypothesis that the medication is unsafe and set a high significance level for proving that it is safe.
+  
+  
+**9.52**
+
+**(a)**
+ A Type I error would be more serious because the null hypothesis that the defendant was innocent would be rejected and an innocent person would receive the death penalty.
+ 
+ **(b)**
+  If the null hypothesis is that the patient doesn't have cancer then a Type II error would be more serious since the patient would go untreated despite actually having cancer since the false null hypothesis was not rejected.  If a Type I error occurred the patient would receive more care and more test until they were found to be negative for cancer.
+
+
+**9.54**
+
+**(a)**
+```{r}
+mu <- 500
+x.bar <- 498
+s <- 100
+se <- 100/sqrt(25000)
+
+t <- (x.bar-mu)/se
+
+print(paste('The test statistic is t =',round(t,2)))
+```
+ 
+**(b)**
+```{r}
+p <- pt(t, df = 24999)
+
+print(paste('The P-value is:',round(p,5)))
+```
+
+**(c)**
+ The result is statistically significant because of the very small P-value that was generated in the analysis (0.0008). This is partially due to the large sample size which lead to a small standard error. However, the 95% confidence interval shows that mean score from 1985 of 500 is not that far beyond the upper limit. It is only 0.75 points more that the upper limit which is only a 0.2% increase and indicates that it is not practically significant. The Cohen's d value is 0.02 which indicates that the effect size is minuscule.
+```{r}
+ci95.low <- x.bar - 1.96*se
+ci95.high <- x.bar + 1.96*se
+print(paste('The 95% confidence interval for the population mean is',
+            round(ci95.low,2), 'to', round(ci95.high,2)))
+
+print(paste('Difference between the mean and upper CI value:',round(1-(ci95.high/mu), 4)))
+
+d <- abs(x.bar - mu)/s
+print(paste("The Cohen's d value is:",d))
+```

@@ -1,0 +1,317 @@
+---
+title: "part 5"
+author: "Miles Tweed"
+date: "12/7/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(boot)
+library(tidyverse)
+library(lubridate)
+proj.dir <- "/home/mtweed/Documents/New_College/year_1/StatInfForDS/Statistical_inference"
+data.dir <- 'Datasets'
+```
+# Data Import
+
+```{r}
+stateCovid <- read.csv(file = file.path(proj.dir, data.dir, "state_covid_data.csv"))
+stateCovid <- stateCovid %>%
+  mutate(date = lubridate::ymd(date))
+
+
+
+stateCovid['month'] <- month(stateCovid$date)
+
+stateCovid['week'] <- week(stateCovid$date)
+
+
+# This shows that the data is skewed right with the daily increase having a median of 4 and a mean of 16.4
+# Negative values? Perhaps corrections to cause of death?
+summary(stateCovid$deathIncrease) # No NA values
+
+
+hist(stateCovid$deathIncrease)
+```
+
+
+# Weekly Dataset
+
+The deathIncrease variable is the number of deaths added per day. We can use the sum to aggregate this data into weekly values.
+
+```{r}
+stateCovidWeekly <- stateCovid %>% 
+  group_by(state,week) %>% 
+  filter(deathIncrease > 0) %>% 
+  select(state, week, deathIncrease) %>% 
+  summarise_at(vars(deathIncrease), funs(sum))
+
+print('Summary of deathIncrease variable for full sample population')
+summary(stateCovidWeekly$deathIncrease)
+
+hist(stateCovidWeekly$deathIncrease)
+
+#wk.samp.pop.med <- median(stateCovidWeekly$deathIncrease)
+
+
+x.median <- function(x,i) { median(x$deathIncrease[i]) }
+
+wk.samp.pop.med <- boot(data = stateCovidWeekly, 
+            statistic = x.median, 
+            R = 10000)
+
+
+
+# Proportion of weeks over all states in which the increase is greater than the median increase
+sam.pop.gt.med <- 
+  stateCovidWeekly %>% 
+    filter(deathIncrease > wk.samp.pop.med$t0)
+
+state.week.num.gt.med <- length(sam.pop.gt.med$week)
+state.week.num <- length(stateCovidWeekly$week)
+
+samp.pop.prop.gt.med <- state.week.num.gt.med /state.week.num
+
+# Unsurprisingly the proportion of values greater than the median is approximately 0.5
+print(paste('Sample population median deaths per week calculated via bootstrap:',wk.samp.pop.med$t0))
+print(paste('Sample population proportion of weeks greater than median:',round(samp.pop.prop.gt.med,2)))
+```
+
+
+# Subset of states
+
+We wish to analyse the proportion of weeks in which the death increase was above the median. 
+
+```{r}
+states <- stateCovidWeekly[,"state"] %>% unique()
+
+set.seed(12)
+st.sample.1 <- sample(states$state,8)
+
+sam1.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.1)
+```
+
+
+# Inference of population parameter
+
+create an inference of the population parameter. This is proportion of weeks in which the death increase was above the mean or, in other words, the number of weeks in which the increase was greater than the mean divided by the total number of weeks in the sample.
+
+
+```{r}
+# Proportion of weeks from sample 1 states in which the increase is greater than the median increase
+sam1.pop.gt.med <- 
+  sam1.pop %>%
+  ungroup() %>% 
+  filter(deathIncrease > wk.samp.pop.med$t0)
+
+sam1.state.week.num.gt.med <- length(sam1.pop.gt.med$week)
+sam1.state.week.num <- length(sam1.pop$week)
+
+sam1.pop.prop.gt.med <- sam1.state.week.num.gt.med /sam1.state.week.num
+
+print('Sample 1:')
+print(st.sample.1)
+print(paste('Sample size:', length(sam1.pop$week)))
+print(paste('Proportion of weeks with death increase above the median',round(sam1.pop.prop.gt.med,2)))
+
+
+s1 <- sqrt((sam1.pop.prop.gt.med * (1 - sam1.pop.prop.gt.med))/sam1.state.week.num)
+
+sam1.cI95.low <- sam1.pop.prop.gt.med - (1.96 * s1)
+sam1.cI95.high <- sam1.pop.prop.gt.med + (1.96 * s1)
+
+print(paste('The standard deviation for sample 1 is',round(s1,4)))
+print(paste('The 95% confidence interval for sample 1:',round(sam1.cI95.low, 2),'to',round(sam1.cI95.high,2)))
+
+```
+
+
+
+# Other subsets (Regional)
+
+## North East
+```{r}
+northeast.abb <- c("ME", "NH", "VT", "MA", "RI", "CT", "NY", "PA", "NJ")
+
+set.seed(12)
+st.sample.NE <- sample(northeast.abb,8)
+
+samNE.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.NE)
+
+
+samNE.pop.gt.med <- 
+  samNE.pop %>%
+  ungroup() %>% 
+  filter(deathIncrease > wk.samp.pop.med$t0)
+
+samNE.state.week.num.gt.med <- length(samNE.pop.gt.med$week)
+samNE.state.week.num <- length(samNE.pop$week)
+
+samNE.pop.prop.gt.med <- samNE.state.week.num.gt.med /samNE.state.week.num
+
+print('Sample NE:')
+print(st.sample.NE)
+print(paste('Sample size:', length(samNE.pop$week)))
+print(paste('Proportion of weeks with death increase above the median',round(samNE.pop.prop.gt.med,2)))
+
+sNE <- sqrt((samNE.pop.prop.gt.med * (1 - samNE.pop.prop.gt.med))/samNE.state.week.num)
+
+samNE.cI95.low <- samNE.pop.prop.gt.med - (1.96 * sNE)
+samNE.cI95.high <- samNE.pop.prop.gt.med + (1.96 * sNE)
+
+print(paste('The standard deviation for sample NE is',round(sNE,4)))
+print(paste('The 95% confidence interval for sample NE:',round(samNE.cI95.low,2),'to',round(samNE.cI95.high,2)))
+
+```
+
+
+## Mid-West
+```{r}
+midwest.abb <- c("WI", "MI", "IL", "IN", "OH", "ND", "SD", "NE", "KS", "MN", "IA", "MO")
+
+set.seed(12)
+st.sample.MW <- sample(midwest.abb,8)
+
+samMW.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.MW)
+
+samMW.pop.gt.med <- 
+  samMW.pop %>%
+  ungroup() %>% 
+  filter(deathIncrease > wk.samp.pop.med$t0)
+
+samMW.state.week.num.gt.med <- length(samMW.pop.gt.med$week)
+samMW.state.week.num <- length(samMW.pop$week)
+
+samMW.pop.prop.gt.med <- samMW.state.week.num.gt.med /samMW.state.week.num
+
+print('Sample MW:')
+print(st.sample.MW)
+print(paste('Sample size:', length(samMW.pop$week)))
+print(paste('Proportion of weeks with death increase above the median',round(samMW.pop.prop.gt.med,2)))
+
+sMW <- sqrt((samMW.pop.prop.gt.med * (1 - samMW.pop.prop.gt.med))/samMW.state.week.num)
+
+samMW.cI95.low <- samMW.pop.prop.gt.med - (1.96 * sMW)
+samMW.cI95.high <- samMW.pop.prop.gt.med + (1.96 * sMW)
+
+print(paste('The standard deviation for sample MW is',round(sMW,4)))
+print(paste('The 95% confidence interval for sample MW:',round(samMW.cI95.low,2),'to',round(samMW.cI95.high,2)))
+
+```
+
+
+## South
+```{r}
+south.abb <- c("DE", "MD" ,"DC", "VA", "WV", "NC","SC","GA","FL","KY","TN","MS", "AL", "OK", "TX", "AR", "LA")
+
+set.seed(12)
+st.sample.S <- sample(south.abb,8)
+
+samS.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.S)
+
+samS.pop.gt.med <- 
+  samS.pop %>%
+  ungroup() %>% 
+  filter(deathIncrease > wk.samp.pop.med$t0)
+
+samS.state.week.num.gt.med <- length(samS.pop.gt.med$week)
+samS.state.week.num <- length(samS.pop$week)
+
+samS.pop.prop.gt.med <- samS.state.week.num.gt.med /samS.state.week.num
+
+print('Sample S:')
+print(st.sample.S)
+print(paste('Sample size:', length(samS.pop$week)))
+print(paste('Proportion of weeks with death increase above the median',round(samS.pop.prop.gt.med,2)))
+
+sS <- sqrt((samS.pop.prop.gt.med * (1 - samS.pop.prop.gt.med))/samS.state.week.num)
+
+samS.cI95.low <- samS.pop.prop.gt.med - (1.96 * sS)
+samS.cI95.high <- samS.pop.prop.gt.med + (1.96 * sS)
+
+print(paste('The standard deviation for sample S is',round(sS,4)))
+print(paste('The 95% confidence interval for sample S:',round(samS.cI95.low,2),'to',round(samS.cI95.high,2)))
+
+```
+
+
+## West
+```{r}
+west.abb <- c("ID","MT","WY","NV","UT","CO","AZ","NM","AK","WA","OR","CA","HI")
+
+set.seed(12)
+st.sample.W <- sample(west.abb,8)
+
+samW.pop <- 
+  stateCovidWeekly %>% 
+  filter(state %in% st.sample.W)
+
+samW.pop.gt.med <- 
+  samW.pop %>%
+  ungroup() %>% 
+  filter(deathIncrease > wk.samp.pop.med$t0)
+
+samW.state.week.num.gt.med <- length(samW.pop.gt.med$week)
+samW.state.week.num <- length(samW.pop$week)
+
+samW.pop.prop.gt.med <- samW.state.week.num.gt.med /samW.state.week.num
+
+print('Sample W:')
+print(st.sample.W)
+print(paste('Sample size:', length(samW.pop$week)))
+print(paste('Proportion of weeks with death increase above the median',round(samW.pop.prop.gt.med,2)))
+
+
+sW <- sqrt((samW.pop.prop.gt.med * (1 - samW.pop.prop.gt.med))/samW.state.week.num)
+
+samW.cI95.low <- samW.pop.prop.gt.med - (1.96 * sW)
+samW.cI95.high <- samW.pop.prop.gt.med + (1.96 * sW)
+
+print(paste('The standard deviation for sample W is',round(sW,4)))
+print(paste('The 95% confidence interval for sample W:',round(samW.cI95.low,2),'to',round(samW.cI95.high,2)))
+
+```
+
+
+
+
+
+```{r}
+
+samFL.pop <- 
+  stateCovidWeekly %>% 
+  filter(state == 'FL')
+
+samFL.pop.gt.med <- 
+  samFL.pop %>%
+  ungroup() %>% 
+  filter(deathIncrease > wk.samp.pop.med$t0)
+
+samFL.state.week.num.gt.med <- length(samFL.pop.gt.med$week)
+samFL.state.week.num <- length(samFL.pop$week)
+
+samFL.pop.prop.gt.med <- samFL.state.week.num.gt.med /samFL.state.week.num
+
+print('Sample FL:')
+print(paste('Sample size:', length(samFL.pop$week)))
+print(paste('Proportion of weeks with death increase above the median',round(samFL.pop.prop.gt.med,2)))
+
+
+sFL <- sqrt((samFL.pop.prop.gt.med * (1 - samFL.pop.prop.gt.med))/samFL.state.week.num)
+
+samFL.cI95.low <- samFL.pop.prop.gt.med - (1.96 * sFL)
+samFL.cI95.high <- samFL.pop.prop.gt.med + (1.96 * sFL)
+
+print(paste('The standard deviation for sample FL is',round(sFL,4)))
+print(paste('The 95% confidence interval for sample FL:',round(samFL.cI95.low,2),'to',round(samFL.cI95.high,2)))
+
+```

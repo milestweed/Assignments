@@ -1,0 +1,34 @@
+---
+title: "Homework 4"
+author: "Miles Tweed"
+date: "1/27/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+proj.dir <- "/home/mtweed/Documents/New_College/year_2/Data_viz"
+data.dir <- "Data"
+library(scales)
+library(tidyverse)
+lending <- read_csv(file.path(proj.dir, data.dir, "LendingClubLoanData.csv"))
+```
+## Numerical Sumamry
+```{r}
+# Total Number of Accounts
+lending %>% select(total_acc) %>% drop_na() %>% summary()
+```
+## Histogram
+```{r}
+lending %>% select(total_acc) %>%  drop_na() %>% 
+  ggplot(aes(x = total_acc, y = format(..count.., scientific = FALSE))) +
+  geom_histogram(binwidth = 5, boundary = 0, closed = 'right', fill = 'lightblue', color = 'black') +
+  scale_y_continuous(limits = c(0,4.2e5), expand = c(0,0), labels = scales::label_number_si()) + 
+  xlab('Number of Accounts') + ylab('Frequency') + 
+  labs(title = 'Lending Club', subtitle = 'Total Number of Accounts Held By Customers') + 
+  theme_classic() + 
+  ggsave('LCHist.png', width = 150, height = 75, units = 'mm')
+```
+## Distribution
+
+The distribution is unimodal, right skewed, and centered around 22 accounts. The majority of customers have between 0 and 50 accounts while some customers have have as many as 176 accounts.  These customers could be considered outliers.

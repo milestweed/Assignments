@@ -1,0 +1,195 @@
+---
+title: "Homework 10"
+author: "Miles Tweed"
+date: "2/21/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggalluvial)
+library(ggradar)
+```
+
+```{r}
+
+stroke <- read.csv('../../Data/healthcare-dataset-stroke-data.csv')
+
+head(stroke)
+
+stroke.gen <- 
+stroke %>% 
+  group_by(gender) %>% 
+  summarise(age = median(age)/max(age),
+            hypertension = mean(hypertension)/max(hypertension),
+            heart_disease = mean(heart_disease)/max(heart_disease),
+            avg_glucose = median(avg_glucose_level)/max(avg_glucose_level),
+            bmi = mean(as.numeric(bmi), na.rm = TRUE)/max(as.numeric(bmi), na.rm = TRUE),
+            stroke = mean(stroke)/max(stroke)
+            ) %>% 
+  filter(gender != 'Other')
+
+ggradar(stroke.gen)
+```
+
+```{r}
+stroke.wt <- 
+stroke %>% 
+  group_by(work_type) %>% 
+  summarise(age = median(age)/max(age),
+            hypertension = mean(hypertension)/max(hypertension),
+            heart_disease = mean(heart_disease)/max(heart_disease),
+            avg_glucose = median(avg_glucose_level)/max(avg_glucose_level),
+            bmi = mean(as.numeric(bmi), na.rm = TRUE)/max(as.numeric(bmi), na.rm = TRUE),
+            stroke = mean(stroke)/max(stroke)
+            ) %>% 
+  filter(work_type != 'children' & work_type != 'Never_worked')
+
+stroke.wt
+
+ggradar(stroke.wt)
+```
+
+```{r}
+stroke.ss <- 
+stroke %>% 
+  group_by(smoking_status) %>% 
+  summarise(age = median(age)/max(age),
+            hypertension = mean(hypertension)/max(hypertension),
+            heart_disease = mean(heart_disease)/max(heart_disease),
+            avg_glucose = median(avg_glucose_level)/max(avg_glucose_level),
+            bmi = mean(as.numeric(bmi), na.rm = TRUE)/max(as.numeric(bmi), na.rm = TRUE),
+            stroke = mean(stroke)/max(stroke)
+  )
+  #           ) %>% 
+  # filter(work_type != 'children' & work_type != 'Never_worked')
+
+stroke.ss
+
+ggradar(stroke.ss, label.gridline.min = FALSE, label.gridline.mid = FALSE)
+```
+
+
+
+```{r}
+stroke.rt <- 
+stroke %>% 
+  group_by(Residence_type) %>% 
+  summarise(age = median(age)/max(age),
+            hypertension = mean(hypertension)/max(hypertension),
+            heart_disease = mean(heart_disease)/max(heart_disease),
+            avg_glucose = median(avg_glucose_level)/max(avg_glucose_level),
+            bmi = mean(as.numeric(bmi), na.rm = TRUE)/max(as.numeric(bmi), na.rm = TRUE),
+            stroke = mean(stroke)/max(stroke)
+  )
+  #           ) %>% 
+  # filter(work_type != 'children' & work_type != 'Never_worked')
+
+stroke.rt
+
+ggradar(stroke.rt) + 
+  ggsave('Radar Plot')
+```
+
+```{r}
+stroke.sc <- 
+stroke %>%  
+  mutate(stroke_cat = ifelse(stroke == 1, 'Had stroke', 'No Stroke')) %>% 
+  group_by(stroke_cat) %>% 
+  summarise(age = pnorm(median(age),
+                        mean = mean(age, na.rm = TRUE), 
+                        sd = sd(age, na.rm = TRUE)),
+            hypertension = pnorm(median(hypertension),
+                                 mean = mean(hypertension, na.rm = TRUE), 
+                                 sd = sd(hypertension, na.rm = TRUE)),
+            heart_disease = pnorm(median(heart_disease),
+                                  mean = mean(heart_disease, na.rm = TRUE), 
+                                  sd = sd(heart_disease, na.rm = TRUE)),
+            avg_glucose = pnorm(median(avg_glucose_level),
+                                mean = mean(avg_glucose_level, na.rm = TRUE), 
+                                sd = sd(avg_glucose_level, na.rm = TRUE)),
+            bmi = pnorm(median(as.numeric(bmi), na.rm = TRUE),
+                        mean = mean(as.numeric(bmi), na.rm = TRUE), 
+                        sd = sd(as.numeric(bmi), na.rm = TRUE))
+  )
+  #           ) %>% 
+  # filter(work_type != 'children' & work_type != 'Never_worked')
+
+stroke %>% pnorm(median(age), mean = mean(age, na.rm = TRUE), sd = sd(age, na.rm = TRUE))
+
+stroke.sc
+
+ggradar(stroke.sc, label.gridline.min = TRUE, label.gridline.mid = FALSE)
+```
+
+
+```{r}
+min_max_norm <- function(x) {
+  (x-min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE)-min(x, na.rm = TRUE))
+}
+
+stroke[,'bmi'] <- as.numeric(stroke[,'bmi'])
+stroke.sc <- 
+stroke %>%  
+  mutate(stroke_cat = ifelse(stroke == 1, 'Had stroke', 'No Stroke')) %>% 
+  select(stroke_cat,age,hypertension,heart_disease,avg_glucose_level,bmi)
+
+
+stroke.sc[,c('age','avg_glucose_level','bmi')] <- lapply(stroke.sc[,c('age','avg_glucose_level','bmi')],min_max_norm)
+
+stroke.sc <- 
+stroke.sc %>% group_by(stroke_cat) %>% 
+  summarise(age = mean(age, na.rm = TRUE),
+            hypertension = mean(hypertension, na.rm = TRUE),
+            heart_disease = mean(heart_disease, na.rm = TRUE),
+            avg_glucose_level = mean(avg_glucose_level, na.rm = TRUE),
+            bmi = mean(bmi, na.rm = TRUE))
+
+stroke.sc <- 
+stroke.sc %>% rename(`Glucose level`='avg_glucose_level',
+                     BMI = 'bmi',
+                     Age = 'age',
+                     Hypertension='hypertension',
+                     `Heart Disease`='heart_disease')
+
+ggradar(stroke.sc, base.size = 1, 
+        plot.extent.x.sf = 1.2, 
+        plot.title = 'Stroke Associated Factor Comparison', 
+        legend.position = 'right',
+        values.radar = c('0.0','0.5','1.0')) +
+  ggsave('RadarPlot.png', width = 200, height = 100, units = 'mm')
+```
+
+
+
+```{r}
+library(tidyverse)
+library(ggalluvial)
+
+head(stroke)
+
+stroke.allu <- 
+  stroke %>% 
+  mutate(Hypertension=ifelse(hypertension == 1, 'Yes','No'),
+         Heart_Disease=ifelse(heart_disease == 1, 'Yes','No'),
+         Had_Stroke=ifelse(stroke == 1, 'Yes','No')) %>% 
+  select(gender, Hypertension,Heart_Disease,ever_married,work_type,Residence_type,smoking_status,Had_Stroke) %>% 
+  filter(gender != 'Other') %>% 
+  group_by(Had_Stroke)
+
+stroke.allu
+
+is_alluvia_form(stroke.allu)
+
+ggplot(stroke.allu, aes(y = ..count.., 
+                       axis1 = gender, 
+                       axis2 = Hypertension,
+                       axis3 = Heart_Disease,
+                       axis4 = ever_married,
+                       axis6 = Residence_type,
+                       axis7 = smoking_status)) +
+  geom_alluvium(aes(fill = Had_Stroke), width = 1/12) +
+  geom_stratum() +
+  geom_label(stat = "stratum", aes(label = after_stat(stratum)))
+```

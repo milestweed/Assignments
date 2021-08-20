@@ -1,0 +1,166 @@
+---
+title: "Homework 6"
+author: "Miles Tweed"
+date: "3/21/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+```{r}
+crime <- read.csv("../../Data/fl_crime.csv")
+names(crime) <- c('country','crime','education','urban','income')
+head(crime)
+```
+
+**Part 1**
+
+$$\text{crime}_i = \beta_{education}\cdot\text{education}_i + \beta_{urban}\cdot\text{urban}_i + \beta_{income}\cdot\text{income}_i + \epsilon_i,\ \epsilon_i\sim_{i.i.d.}\mathbb{N}(0,\sigma^2)$$
+
+**Part 2**
+
+***i*** 
+\begin{align}
+E[Y_i]& = E[\beta_0 + \beta_1X_{1,i} + \beta_2X_{2,i} + \beta_3X_{3,i} + \epsilon_i]\\
+& = E[\beta_0 + \beta_1X_{1,i} + \beta_2X_{2,i} + \beta_3X_{3,i}] + E[\epsilon_i]\\
+& = E[\text{Constant}] + E[\epsilon_i \sim \mathbb{N}(0,\sigma^2)]\\
+& = \beta_0 + \beta_1X_{1,i} + \beta_2X_{2,i} + \beta_3X_{3,i} + 0
+\end{align}
+
+***ii***
+\begin{align}
+V[Y_i]& = V[\beta_0 + \beta_1X_{1,i} + \beta_2X_{2,i} + \beta_3X_{3,i} + \epsilon_i]\\
+& = V[\beta_0 + \beta_1X_{1,i} + \beta_2X_{2,i} + \beta_3X_{3,i}] + V[\epsilon_i]\\
+& = V[\text{Constant}] + V[\epsilon_i \sim \mathbb{N}(0,\sigma^2)]\\
+& = 0 + \sigma^2
+\end{align}
+
+***iii***
+The expected value of $Y_i$ is constant and given by $\beta_0 + \beta_1X_{1,i} + \beta_2X_{2,i} + \beta_3X_{3,i}$ so because the variance of $Y_i$ is defined solely by the irreducible error term $\epsilon_i$ and we make the assumption that $\epsilon_i\sim\mathbb{N}(0,\sigma^2)$ it stands to reason that $Y_i \sim\mathbb{N}(\beta_0 + \beta_1X_{1,i} + \beta_2X_{2,i} + \beta_3X_{3,i},\ \sigma^2)$
+
+**Part 3**
+```{r}
+lm.obj <- lm(crime~education + urban + income, data = crime)
+summary(lm.obj)
+```
+
+***Fitted Equation***
+$$\hat{\text{crime}}= 59.7 - 0.467\cdot\text{education} + 0.697\cdot\text{urban} - 0.383\cdot\text{income}$$
+
+**Part 4**
+
+***For education***
+
+$H_0: \beta_{education} = 0$ $H_a: \beta_{education} \ne 0$. Since the p-value 0.403 is greater than the significance level of 0.05 we would fail to reject the null hypothesis.
+
+***For urban***
+
+$H_0: \beta_{urban} = 0$ $H_a: \beta_{urban} \ne 0$. Since the p-value 1.08e-6 is much less than the significance level of 0.05 we would reject the null hypothesis in favor of the alternative which suggests that there may be a linear relationship between urbanization and crime holding all other variables constant.
+
+***For income***
+
+$H_0: \beta_{income} = 0$ $H_a: \beta_{income} \ne 0$. Since the p-value 0.685 is greater than the significance level of 0.05 we would fail to reject the null hypothesis.
+
+**Part 5**
+
+For counties that have the same percentage of residents aged at least 25 in the county with at least a high school diploma as well as the same median income, an increase of one percent of the population who lives in urban areas results in an increase of 0.697 crimes in the past year per 1000 residents on average across all such counties were the percentage of residents living in urban areas differs by one percent.
+
+**Part 6**
+
+$$H_0: \beta_{education} = \beta_{urban} = \beta_{income} = 0\ \ H_a: \{\text{at least one }\beta_j \ne 0\,\ j = education, urban, income\}$$
+
+The F-statistic of 18.83 with 63 degrees of freedom led to a p-value of 7.823e-09. This small p-value indicates statistical significance so we would reject the null hypothesis in favor of the alternative, that at least one of the explanatory variables has a linear relationship to the response variable.
+
+# Problem 2
+
+**Part 1**
+
+I generated the X and Y data from a uniform distribution since this would lead to the most evenly spread out data.  This led to a very low correlation and no visible trend in the scatter plot.
+```{r}
+Y <- runif(1000)
+X <- runif(1000)
+cor(X,Y)
+plot(X,Y)
+```
+
+**Part 2**
+```{r}
+Y <- runif(200)
+X <- matrix(nrow=200,ncol=50)
+
+for (i in 1:50){
+  temp <- runif(200)
+  X[,i] <- temp
+}
+
+df <- data.frame(X,Y)
+```
+
+**Part 3**
+```{r}
+lm.obj <- lm(Y~., df)
+summary(lm.obj)
+```
+
+***(a)*** There were 5 predictors that were statistically significant at the $\alpha=0.05$ level.  The choice to reject the null hypothesis for these predictors would be a Type I error because these would be false positive where an effect is seen and no linear relationship truly exists.  We know that to be the case because the data is all generated using a uniform distribution where the data points will be evenly distributed over the range. Although it is not the case here, if we failed to reject $H_0$ when a linear relationship truly exists we would be committing a Type II error.
+
+***(b)*** The appropriate procedure to test if at least one of the explanatory variables has a linear relationship with the response variable is analysis of variance for regression (ANOVA).  The F statistic is a measure that informs us of the strength of the relationship and is used to generate a p-value based on its distribution. For this model the F statistic is 1.141 at 149 degrees of freedom which corresponds to a p-value of 0.2703 which is not statistically significant indicating that it is unlikely that one of the explanatory variables has a strong relationship with the response variable. In other words, it is unlikely that the null hypothesis that $H_0: \beta_1 = \beta_2 = \ldots = \beta_{50} = 0$  is false.  A higher F-statistic or smaller p-value would indicate more evidence against this null hypothesis.
+
+# Problem 3
+
+```{r}
+library(ISLR)
+fix(Auto)
+lm.obj <- lm(mpg~.-name, data = Auto)
+summary(lm.obj)
+```
+
+**Part 1**
+$$H_0: \beta_1 = \beta_{2} = \beta_{3} = \beta_{4} = \beta_{5} = \beta_{6} = \beta_{7} = 0$$
+
+or...
+
+$$H_0: \beta_{cylinders} = \beta_{displacement} = \beta_{horsepower} = \beta_{weight} = \beta_{acceleration} = \beta_{year} = \beta_{origin} = 0$$
+$$H_a:\{\text{at least one }\beta_j \ne 0\},\ j=1,2,3,4,5,6,7$$
+
+The F-Statistic corresponds to this test. Yes it is significant because the p-value is < 2.2e-16. Therefore we rejuct the null hypothesis in favor of at least one of the coefficients being not equal to zero.
+
+**Part 2**
+
+The significant predictors are displacement, weight, year, and origin.
+
+**Part 3**
+
+The two most significant predictors are year and weight with the coefficients 0.751 and -0.006 respectively.
+
+***For year***
+
+For vehicles with the same number of cylinders, displacement, horsepower, weight, acceleration, and country of origin, a vehicle that is one year older will have a 0.751 miles per gallon increase on average over all such vehicles that difer by one year in age.
+
+***For weight***
+
+For vehicles of the same model year andd with the same number of cylinders, displacement, horsepower, acceleration, and country of origin, a vehicle that is one pound heavier will have a 0.006 mile per gallon decrease on average over all such vehicles that difer in weight by one pound.
+
+**Part 4**
+```{r}
+confint(lm.obj)
+```
+
+***For weight***
+
+We can be 95% confident that an increase in weight of one pound will result in a decrease of between 0.005 and 0.008 miles per gallon on average across all vehicles of the same model year that differ in weight by one pound and have the same displacement, horsepower, acceleration, number of cylinders, and country of origin.
+
+***For year***
+
+We can be 95% confident that an increase of one year in age will result in an increase of between 0.65 and 0.85 miles per gallon on average across all vehicles that have the same weight, displacement, horsepower, acceleration, number of cylinders, and country of origin but differ in age by one year.
+
+**Part 5**
+
+The residual standard error (RSE) for this model is 3.328 which indicates that the model misses the true value of the response by 3.328 miles per gallon on average across all datapoints in the sample.
+
+The $R^2$ value is 0.82 which indicates that this linear model can explain about 82% of the variability of the response data around the mean.
+

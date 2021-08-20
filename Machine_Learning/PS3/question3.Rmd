@@ -1,0 +1,98 @@
+---
+title: "Question 3"
+output: pdf_document
+---
+```{r include=FALSE}
+library(ISLR)
+library(tidyverse)
+df <- Auto %>% select(-'name')
+```
+
+# ISLR Chapter 3, Problem 9
+
+**Part a**
+
+Visually, it seems that many of the variables are correlated (i.e. horsepower and displacement)
+```{r}
+df %>% plot(pch = 20,col='darkgreen')
+```
+
+
+
+**Part b**
+
+The correlation matrix confirms the correlations identified in part a.
+```{r}
+df %>% cor() %>% round(2)
+```
+
+
+
+**Part c**
+
+```{r}
+fit <-  lm(mpg ~ ., data = df)
+
+summary(fit)
+```
+
+**i.**
+
+There is a relationship between the predictors and the response variable. I found some coefficients to be surprising because I would have thought that displacement and acceleration would have negative coefficients when predicting mpg. This leads me to believe that interaction effects will have an impact.  Excluding the intercept, the largest coefficients in magnitude are year and origin.
+
+**ii.**
+
+There are four predictors with a statistically significant relationship to the response; displacement, weight, year, and origin. 
+
+**iii.**
+
+The coefficient for the year variable suggests that the mpg of cars increases. Year has the lowest correlation with the other variable so I believe that this interpretation could be accurate.
+
+**Part d**
+
+Overall, the model seems to struggle with vehicles that have higher mpg ($mpg \geq 18$). Considering the first plot returned, there are certainly some outliers in the data the have been specifically labelled. According to the plot the vehicles with index 323, 327, and 326 were underestimated by over 10 mpg.  The leverage plot shows that the vehicle with index 14 has very high leverage.
+```{r}
+# Outliers
+Auto[c('323','326','327'),]
+
+# High Leverage
+Auto[c('14'),]
+
+
+plot(fit)
+```
+
+**Part e**
+
+I tried to choose interaction terms that seemed to make sense, I decided to include all of the interaction terms between cylinders, displacement, horsepower, weight, and acceleration. I used the * symbol because I also wanted to include the individual terms as well. The interactions between  cylinders:horsepower:acceleration and cylinders:horsepower:weight:acceleration showed statistical significance.  They both seem to be suggesting the same thing; that vehicles with many cylinders, lots of horsepower, and able to accelerate quickly (i.e. sports cars) tend to have lower mpg. Adding more weight increased the statistical significance but not by a lot. I feel this is a reasonable conclusion.
+```{r}
+fit2 <-  lm(mpg ~ cylinders*displacement*horsepower*weight*acceleration + year + origin, data = df)
+
+summary(fit2)
+```
+
+
+**part f**
+
+Fitting the transformed variable changed the results of the fit and the significance of the relationships quite a bit. Surprisingly, year remained the most significant variable relationship throughout the transformations. Most noticeably, almost every variable showed a statistically significant relationship to the response in the fit of $x^2$ even though many of the coefficients were very small. The log fit had the highest $R^2$ value, as well as the largest F-statistic, suggesting that it was the best at explaining the variance in the data while the $x^2$ fit had the lowest $R^2$ value. Interestingly, the log fit also gave a negative coefficient for acceleration while the original fit had a positive coefficient indicating that it may have a negative impact on mpg. None of the fits suggest that displacement has a negative impact on mpg since all four have a positive coefficient for displacement.
+```{r}
+# Original Fit
+summary(fit)
+
+# Fit of log(x)
+df.log <-  log(df)
+fit.log <- lm(mpg ~ ., data = df.log)
+summary(fit.log)
+
+# Fit of sqrt(x)
+df.sqrt <-  sqrt(df)
+fit.sqrt <- lm(mpg ~ ., data = df.sqrt)
+summary(fit.sqrt)
+
+# Fit of x^2
+df.sq <-  df**2
+fit.sq <- lm(mpg ~ ., data = df.sq)
+summary(fit.sq)
+
+```
+

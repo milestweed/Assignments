@@ -1,0 +1,130 @@
+---
+title: "Homework7"
+author: "Miles Tweed"
+date: "1/29/2021"
+output: pdf_document
+---
+
+Please complete points 4 and 5
+
+Fit a simple linear regression model for the Ames house price data set (on Canvas), using the price of the house (in $1000) as the response variable and the size as the explanatory variable.
+  
+Compute the standardized (or better yet: studentized) residuals. (rstudent(fit) returns studentized residuals, where fit = lm(y~x).)
+    
+Plot a (faint) histogram of the residuals, with a smooth density estimate and a standard normal distribution overlaid.
+    
+Obtain a P-P plot of the studentized residuals.
+
+Obtain a Q-Q plot of the studentized residuals and briefly explain.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+house <- read_csv('/home/mtweed/Documents/New_College/year_2/Data_viz/Data/traindata_housepricesAmes.csv')
+
+house <-  house %>% mutate(SF = `1stFlrSF` + `2ndFlrSF`)
+
+model <- lm(SalePrice/1000 ~ SF, data = house)
+
+house <- house %>% mutate(stresid = rstudent(model))
+
+```
+
+
+```{r}
+house %>% ggplot() + 
+  geom_histogram(aes(x = stresid, y = ..density..), 
+                 binwidth = 0.66, 
+                 alpha = 0.25,
+                 color = 'gray91',
+                 fill = 'seashell4'
+                 ) + 
+  geom_density(aes(x = stresid, color = 'Residuals')) + 
+  stat_function(aes(color = "Normal"),
+                fun = dnorm, 
+                args = list(mean = mean(house$stresid), sd = sd(house$stresid)),
+                size=0.9) + 
+  labs(title="Residual Density", x="", y="", color = "Distribution") +
+  theme(axis.line.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.y = element_blank()) +
+  theme_minimal() + 
+  ggsave('residualDensity.png', width = 150, height = 75, units = 'mm')
+
+```
+
+```{r fig.height=2, fig.width=3}
+mysample <- house$stresid
+F.x <- ecdf(mysample)
+yvar <- F.x(mysample)
+xvar <- pnorm(mysample, mean=mean(mysample), sd=sd(mysample))
+df <- data.frame(x=xvar, y=yvar)
+
+ggplot(data=df, aes(x=x, y=y)) + 
+  geom_point(col="blue") + 
+  geom_abline(intercept=0, slope=1, color="red") +
+  coord_cartesian(xlim=c(0,1), ylim=c(0,1)) +
+  theme_minimal() +
+  labs(y="Residual Cum. Prob.", x="Normal Cum. Prob.", title="P-P Plot: Normal") + 
+  ggsave('PPnorm.png', width = 150, height = 75, units = 'mm')
+```
+
+```{r fig.height=2, fig.width=3}
+mysample <- house$stresid
+F.x <- ecdf(mysample)
+yvar <- F.x(mysample)
+xvar <- pexp(mysample)#, mean=mean(mysample), sd=sd(mysample))
+df <- data.frame(x=xvar, y=yvar)
+
+ggplot(data=df, aes(x=x, y=y)) + 
+  geom_point(col="blue") + 
+  geom_abline(intercept=0, slope=1, color="red") +
+  coord_cartesian(xlim=c(0,1), ylim=c(0,1)) +
+  theme_minimal() +
+  labs(y="Residual Cum. Prob.", x="Exponential Cum. Prob.", title="P-P Plot: Exponential")+
+  ggsave('PPexp.png', width = 150, height = 75, units = 'mm')
+```
+
+
+
+```{r fig.height=2, fig.width=3}
+quantile(mysample)
+ggplot(data=data.frame(x=mysample), aes(sample=mysample)) + 
+  geom_qq(dparams=list(mean=mean(mysample), sd=sd(mysample)), color="blue") +
+  geom_qq_line(dparams=list(mean=mean(mysample), sd=sd(mysample)), color="red") +
+  theme_minimal() +
+  labs(y="Residual Quantile", x="Theoretical Quantile", title="Q-Q Plot") 
+  ggsave('QQnorm.png', width = 150, height = 75, units = 'mm')
+```
+
+
+```{r}
+library(cowplot)
+hist <- 
+ggplot(house, aes(x = stresid)) + 
+  geom_histogram(binwidth = 0.5, 
+                 closed = 'left',
+                 color = 'gray56',
+                 fill = "darkorchid4",
+                 alpha = 0.7)
+
+box <- ggplot(data = house, aes(y=stresid)) +
+  geom_boxplot(fill="darkorchid4", 
+               alpha = 0.7,
+               outlier.shape=21, 
+               outlier.fill="darkorchid4", 
+               outlier.alpha=0.3) +
+  coord_flip() + theme_classic() + mytheme +
+  theme(
+        axis.line.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.x=element_blank()
+  )
+
+plot_grid(hist, box, ncol = 1, rel_heights = c(0.85, 0.15), align = 'v', axis = 'lr')+
+
+```
+
+

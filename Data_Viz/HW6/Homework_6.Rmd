@@ -1,0 +1,54 @@
+---
+title: "Homework 6"
+author: "Miles Tweed"
+date: "1/28/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Fit a simple linear regression model for the Ames house price data set (on Canvas), using the sale price of the house (perhaps in $1000) as the response variable and the size of the house (there are a couple of options on how you define size based on the information in this dataset, but don't use lot size, as this is the size of the lot and not the house) as the explanatory variable.
+
+2. Compute the standardized (or better yet: studentized) residuals. (In R, the command rstudent(fit) returns the studentized residuals, where fit is the lm object.)
+
+3. Plot a (faint) histogram of the residuals, with a smooth density estimate and a standard normal distribution overlaid, to check if the normality assumption is reasonable.
+
+```{R}
+library(MASS)
+library(tidyverse)
+
+set.seed(123)
+
+house <- read_csv('/home/mtweed/Documents/New_College/year_2/Data_viz/Data/traindata_housepricesAmes.csv')
+
+house <-  house %>% mutate(SF = `1stFlrSF` + `2ndFlrSF`)
+
+model <- lm(SalePrice/1000 ~ SF, data = house)
+
+house <- house %>% mutate(stresid = rstudent(model), normdist = rnorm(1460))
+
+
+house %>% ggplot() + 
+  geom_histogram(aes(x = stresid, y = ..density..), 
+                 binwidth = 0.66, 
+                 alpha = 0.25,
+                 color = 'gray91',
+                 fill = 'seashell4'
+                 ) + 
+  geom_density(aes(x = stresid, fill = 'Residuals'),
+               color = 'turquoise4',
+               alpha = 0.2) +
+  geom_density(aes(x = normdist, fill = 'Normal'),
+               color = 'orchid4',
+               alpha = 0.3) + 
+  labs(title="Residual Density", x="", y="", fill = "Distribution") +
+  theme(axis.line.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.y = element_blank()) +
+  theme_minimal() + 
+  ggsave('residualDensity.png', width = 150, height = 75, units = 'mm')
+
+```

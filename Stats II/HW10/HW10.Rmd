@@ -1,0 +1,278 @@
+---
+title: "Homework 10"
+author: "Miles Tweed"
+date: "4/25/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+**Part 1**
+
+***a.***
+```{r}
+ads <- read.csv('../../Data/Advertising.csv')
+lm.obj <- lm(sales ~ TV, data=ads)
+plot(lm.obj, which = 1)
+```
+
+The residuals have heteroscedasticity or non-constant variance. We can fix this by fitting the predictor variable to the log or square root of the response.
+
+```{r}
+# Modifying the model to use the log of the response
+lm.obj <- lm(I(log(sales) ~ TV), data=ads)
+```
+
+***b.***
+```{r}
+# Residual Vs Fitted for modifies model
+plot(lm.obj, which = 1)
+```
+
+The plot shows a curved fit around the mean=0 line.  We can assess a quadratic model to remedy this/
+
+```{r}
+# Modifying the model to be quadratic
+lm.obj <- lm(log(sales)~TV+I(TV^2), data=ads)
+plot(lm.obj, which = 1)
+```
+
+The fit of the residuals is now much more close to the mean=0 line.
+
+***c.***
+```{r}
+plot(lm.obj, which=2)
+```
+The residuals are not quite normally distributed since it deviated from the regression at the edges. This is not a big problem in this case since the sample size is large enough (>50).
+
+***d***
+
+```{r message=FALSE}
+library(tidyverse)
+ggplot(data = ads, aes(y=I(log(sales)), x = TV + I(TV^2))) +
+  geom_point() + 
+  geom_smooth(method = 'lm') + 
+  geom_text(aes(y = jitter(I(log(sales)), amount = 0.01),
+                label = rownames(ads)), 
+                color = 'red',
+                check_overlap = TRUE,
+                nudge_y = -0.1)
+```
+
+1) regression outliers: any point that is located far from the regression line, especially points 131, 156, 9, 23
+
+2) high leverage points: any point that is towards the upper and lower ends of the x range, especially the points 131, 156, 9 23
+
+3 Influential outliers: any point that is both far from the regression line and also a high leverage point, 131, 156, 9, 23
+
+
+
+***e.***
+I am choosing the point 131 as the most influential regression outlier. 
+```{r}
+plot(lm.obj, which = 4)
+
+# With observation
+lm.obj.1 <- lm(log(sales)~TV+I(TV^2), data=ads)
+sum.one <- summary(lm.obj.1)
+coefs1 <- lm.obj.1$coefficients
+r2.1 <- sum.one$r.squared
+rse1 <- sqrt(deviance(lm.obj.1)/df.residual(lm.obj.1))
+
+print(coefs1)
+print(paste("R^2 without:", r2.1, "RSE without:", rse1))
+
+# Without observation
+lm.obj.2 <- lm(log(sales)~TV+I(TV^2), data=ads[-131,])
+sum.two <- summary(lm.obj.2)
+coefs2 <- lm.obj.2$coefficients
+r2.2 <- sum.two$r.squared
+rse2 <- sqrt(deviance(lm.obj.2)/df.residual(lm.obj.2))
+
+print(coefs2)
+print(paste("R^2 without:", r2.2, "RSE without:", rse2))
+```
+
+***Fitted Equation With Outlier***
+$$\hat{\log(sales)} = 1.804 + 0.00815\cdot TV - 1.52\cdot10^{-5}\cdot TV^2$$
+***Fitted Equation Without Outlier***
+$$\hat{\log(sales)} = 1.861 + 0.00737\cdot TV - 1.29\cdot10^{-5}\cdot TV^2$$
+
+The model did not change much by removing this one outlier.  The $R^2$ changed from 0.67 to 0.69 which means that the model without the outlier explains two percent more variance in the response than the model with the outlier.  The RSE changed from 0.239 to 0.219.
+
+***f.***
+I think it would be fine to include this observation since it does not seem to change the model much.  Potentially it would be more effective to remove other influential outliers as well though.
+
+
+**Part 2**
+
+***a.***
+```{r}
+lm.obj <- lm(sales ~ TV + radio + newspaper, data = ads)
+
+step(lm.obj)
+```
+
+The newspaper variable was dropped using backward selection.
+
+***b.***
+```{r warning=FALSE}
+plot(lm.obj, which = c(1,2))
+
+lm.obj <- lm(I(log(sales)) ~ TV + I(TV^2)  + radio + I(radio^2) , data = ads)
+plot(lm.obj, which = 1)
+```
+
+***c.***
+
+1) For regression outliers we can observe the points that have the largest value greater than or less than zero in the regression vs fitted plot (92,131,6 in this case)
+
+2) For the high leverage point we would choose points that are at the extremes of the x ranges 0.7 to 296.4 for TV and 0.0 to 49.6 for radio.
+
+3) For the influential outliers we could identify points that are both regression outliers and high leverage or we can look at the Cook's distance in the plot below.  In this case the most influential outlier is observation 131
+```{r}
+plot(lm.obj, which = c(1,4))
+```
+
+
+***d.***
+
+The observation 131 is the most influential outlier according to the Cook's distance. 
+
+```{r}
+# With observation
+lm.obj.1 <- lm(I(log(sales)) ~ TV + I(TV^2)  + radio + I(radio^2), data=ads)
+sum.one <- summary(lm.obj.1)
+coefs1 <- lm.obj.1$coefficients
+r2.1 <- sum.one$r.squared
+rse1 <- sqrt(deviance(lm.obj.1)/df.residual(lm.obj.1))
+
+print(coefs1)
+print(paste("R^2 without:", r2.1, "RSE without:", rse1))
+
+# Without observation
+lm.obj.2 <- lm(I(log(sales)) ~ TV + I(TV^2)  + radio + I(radio^2), data=ads[-131,])
+sum.two <- summary(lm.obj.2)
+coefs2 <- lm.obj.2$coefficients
+r2.2 <- sum.two$r.squared
+rse2 <- sqrt(deviance(lm.obj.2)/df.residual(lm.obj.2))
+
+print(coefs2)
+print(paste("R^2 without:", r2.2, "RSE without:", rse2))
+```
+
+***Fitted Equation With Outlier***
+$$\hat{\log(sales)} = 1.466 + 0.00889\cdot TV - 1.81\cdot10^{-5}\cdot TV^2 + 0.0152\cdot radio - 5.13\cdot10^{-5}\cdot radio^2$$
+***Fitted Equation Without Outlier***
+$$\hat{\log(sales)} = 1.520 + 0.00802\cdot TV - 0.0000157\cdot10^{-5}\cdot TV^2 + 0.0156\cdot radio - 0.0000472\cdot10^{-5}\cdot radio^2$$
+
+The $R^2$ changed from 0.88 to 0.94 which means that the model without the outlier explains six percent more variance in the response than the model with the outlier.  The RSE changed from 0.146 to 0.094.
+
+
+***e.***
+
+Since removing this outlier resulted in a more substantial change in the model I think it would be best to exclude this observation.
+
+
+# Problem 2
+
+**Part 1**
+```{r}
+library(ISLR)
+
+lm.obj <- lm(Sales ~ Income + Advertising + ShelveLoc + Urban, data = Carseats)
+```
+
+***a.*** 
+$$Sales_i = \beta_0 + \beta_1 Income_i + \beta_2 Advertising_i + \beta_3 ShelveLoc_i + \beta_4 Urban_i + \epsilon_i,\ \epsilon_i\sim\mathbb{N}(0,\sigma^2)$$
+
+***b.***
+```{r}
+plot(lm.obj, which = c(1,2))
+
+```
+
+Yes, the modelling assumptions do hold in this case.
+
+***c.***
+
+We can rely on the p-values provided by classic inference here because the modelling assumption $\epsilon_i\sim\mathbb{N}(0,\sigma^2)$ holds true.
+
+```{r}
+summary(lm.obj)
+```
+
+The two most significant predictors are the ones that indicate the categorical quality of the shelving location for the car seat.  Holding income, advertising, and Urban location constant, a car seat with a good shelve location will sell $4.656 \cdot 1000 = 4,656$ more units than one with a bad shelving location on average.  Holding income, advertising, and Urban location constant, a car seat with a medium shelve location will sell $1.837 \cdot 1000 = 1,837$ more units than one with a bad shelving location on average.
+
+
+**Part 2**
+
+```{r message = FALSE}
+library(MASS)
+lm.obj <- lm(medv~crim + rm + lstat, data = Boston)
+```
+
+***a.***
+$$medv_i = \beta_0 + \beta_1crim_i + \beta_2rm_i + \beta_3lstat_i + \epsilon_i,\ \mathbb{N}(0, \sigma^2)$$
+
+***b.***
+```{r}
+plot(lm.obj, which = c(1,2))
+```
+
+Here the modelling assumptions do not hold true.  The residual vs fitted shows a curved fit line that tends to sit above the mean=0 line and the Q-Q plot strays a lot at the end of the distribution.
+
+```{r}
+plot(medv ~ crim + rm + lstat, data=Boston)
+```
+
+There seems to be a non-linear relationship with the lstat variable and also possibly the rm variable. Adding quadratic terms for these variable leads to a better result.
+
+```{r}
+lm.obj <- lm(medv ~ crim + rm + I(rm^2) + lstat + I(lstat^2), data = Boston)
+
+plot(lm.obj, which = c(1,2))
+```
+
+***c.***
+
+```{r}
+summary(lm.obj)
+```
+
+All of the coefficients for each predictor were statistically significant at the $\alpha=0.001$ level as was the model over all.
+
+# Problem 3
+```{r}
+library(ISwR)
+df <- thuesen
+
+boot.est <- numeric(10000)
+
+for (i in c(1:10000)) {
+  inds <- sample(c(1:24), 24, replace = TRUE)
+  data = df[inds,]
+  lm.obj <- lm(short.velocity~blood.glucose, data = data)
+  boot.est[i] <- lm.obj$coefficients[2]
+}
+
+hist(boot.est)
+se <- sd(boot.est)/sqrt(length(boot.est))
+conf.int <- c(mean(boot.est) - 1.96*se, mean(boot.est + 1.96*se))
+print(paste("beta1:",round(mean(boot.est),5)))
+print(paste("SE:", round(se, 5)))
+print(paste("95% confidence interval:", round(conf.int[1], 5),'-',round(conf.int[2], 5)))
+t.test(boot.est, numeric(10000))
+
+lm.obj <- lm(short.velocity~blood.glucose, data = df)
+summary(lm.obj)
+```
+
+Since the bootstrap estimate is over 10000 replicates the standard error is very small (about 1% of the standard error for the classical approach) so the 95 confidence interval is narrow. The significance for the blood.glucose predictor would not change at the $\alpha=0.05$ level since the classical approach was significant at this level but the bootstrap estimate is more significant.
+
+
+

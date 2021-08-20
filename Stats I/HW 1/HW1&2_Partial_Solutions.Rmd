@@ -1,0 +1,93 @@
+---
+title: "Homework # ..., My Name."
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# This one contains solutions to some questions from both HW 1 \& 2, simply for illustration of expectations for both (even though you haven't gotten the HW2 yet).
+
+## Problem 1 (make sure to include code with outputs)
+
+1. I will study the political affiliations (**keep in mind - you can't pick that variable**), which takes on three categories: democrat ("d"), independent ("i") and republican ("r"):
+
+```{r, fig.height=3.5}
+fl_data <- read.csv("http://sites.williams.edu/bklingen/files/2015/07/fl_student_survey.csv") # You file path will probably be different
+table(fl_data$political_affiliation)
+barplot(table(fl_data$political_affiliation))
+```
+
+Most students had independent political affiliation (24), second most - democratic (21), and the least - republican (15).
+
+2. ...
+
+## Problem 2
+
+**1.7** 
+
+a) 3077 people who responded;
+
+b) All adults in the United States;
+
+c) 23%.
+
+**1.8** ...
+
+**1.9** 
+
+a) A graduate student;
+
+b) A few students from a particular graduate program;
+
+c) All students from that graduate program.
+
+**1.10** ...
+
+**2.3**
+
+**2.6**
+
+**2.10** 
+
+**2.21**  
+
+a) Skewed to the right, because of a few expensive upscale houses.
+
+b) Skewed to the right, because of a few faculty tending to overdraw frequently.
+
+c) Symmetric, due to most being around average, with several over- and underachievers.
+
+d) Symmetric, just like with most physical characteristics: most are around average, with several really short and really tall girls.
+
+**2.34** 
+
+**2.37**
+
+```{r}
+miles <- c(0,0,4,0,0,0,10,0,6,0)
+mean(miles)
+sort(miles)
+
+```
+$$Mean = (0+0+4+0+0+0+10+0+6+0)/10 = 2$$
+$$ Median = \{5th + 6th \ element\}/2 = (0+0)/2=0$$
+$$ Mode = \{Most \ frequent \ value\} = 0$$
+Interpretations:
+
+  - *Mean*: On a typical day, company employees average 2 miles of travel using public transportation.
+  - *Median*: On a typical day, median # of miles traveled by employees via public transportation is $(0+0)/2 = 0$ (average of 5th and 6th employees).
+  - *Mode*: Most of the employees travel 0 miles using public transportation on a typical day.
+
+...
+
+**2.46**
+
+**2.54**
+
+**2.62**
+
+**2.66**
+
+**2.67**
+
+**2.76**

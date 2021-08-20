@@ -1,0 +1,83 @@
+---
+title: "Homework 5"
+author: "Miles Tweed"
+date: "1/27/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+proj.dir <- "/home/mtweed/Documents/New_College/year_2/Data_viz"
+data.dir <- "Data"
+library(scales)
+library(cowplot)
+library(tidyverse)
+lending <- read_csv(file.path(proj.dir, data.dir, "LendingClubLoanData.csv"))
+```
+
+Refer to the LendingClub data. Create a pdf file that shows two graphs next to each other: One showing the density estimate of the loan amounts for loans that have a term of 36 months, the other showing the density estimate of the loan amounts for loans that have a term of 60 months.
+
+Turn in a single pdf, and describe what you see in a very short paragraph.
+
+```{r}
+lending %>% 
+  filter(term == '36 months') %>%
+  select(loan_amnt) %>% 
+  summary()
+
+lending %>% 
+  filter(term == '60 months') %>%
+  select(loan_amnt) %>% 
+  summary()
+
+p1 <- 
+lending %>% 
+  filter(term == '36 months')  %>% ggplot(aes(x = loan_amnt)) +
+  geom_histogram(aes(y = ..density..),
+                 boundary = 0, 
+                 fill = 'azure',
+                 color = 'slategray4',
+                 binwidth = 1500,
+                 closed = 'left') + 
+  geom_density(fill = 'aquamarine2',
+               alpha = 0.6, 
+               adjust = 1.5) + 
+  scale_y_continuous(labels = comma, 
+                     expand = c(0,0)) + 
+  scale_x_continuous(labels = dollar_format(scale = 0.001, suffix = 'k')) +
+  labs(subtitle = '36 month loans') +
+  xlab('Loan Amount') +
+  theme(axis.title = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+
+p2 <- 
+lending %>% 
+  filter(term == '60 months')  %>% ggplot(aes(x = loan_amnt)) +
+  geom_histogram(aes(y = ..density..),
+                 boundary = 0, 
+                 fill = 'burlywood1',
+                 color = 'wheat4',
+                 binwidth = 1500,
+                 closed = 'left') + 
+  geom_density(fill = 'palevioletred3',
+               alpha = 0.6, 
+               adjust = 1.5) + 
+  scale_y_continuous(labels = comma, 
+                     expand = c(0,0)) +
+  scale_x_continuous(labels = dollar_format(scale = 0.001, suffix = 'k')) +
+  labs(subtitle = '60 month loans') +
+  xlab('Loan Amount') + 
+  theme(axis.title = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+
+title <- ggdraw() + draw_label("Loan Amount Density", fontface='bold')
+
+p <- plot_grid(p1,p2) 
+
+plot_grid(title, p, ncol = 1, nrow = 2,align = 'v', rel_heights = c(0.1,1)) +
+  ggsave('LCDensity.png', width = 150, height = 75, units = 'mm')
+```

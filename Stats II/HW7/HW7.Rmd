@@ -1,0 +1,209 @@
+---
+title: "Homework 7"
+author: "Miles Tweed"
+date: "3/28/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Problem 1
+
+## Part 1
+
+```{r message=FALSE}
+library(car)
+library(ISwR)
+attach(cystfibr)
+
+lm.obj <- lm(pemax~., cystfibr)
+summary(lm.obj)
+```
+
+**(a)**
+
+1) Using the F-statistic to test the null hypothesis $H_0: \beta_1 = \beta_2 = \ldots=\beta_p = 0$ where the numbers $1,2,\ldots,p$ represent the predictors to test the overall statistical significance of the model,the value is 2.929 which indicates statistical significance with a p-value of 0.03195 which suggests that at least one of the variables are likely to have an association with the response.  
+
+2) None of the individual predictors showed any statistical significance.  This is likely because the effects are being masked by confounding variables that are correlated with each other.
+
+
+**(b)**
+```{r message=FALSE}
+# (a) From this correlation plot, it is apparent that 
+#     age, height, and weight are correlated and
+#     rv and frc are correlated.
+
+corrplot::corrplot(cor(cystfibr))
+
+# In order to address this I will include only weight 
+# from the first group and rv from the  second group.
+lm.obj2 <- lm(pemax~.-age-height-frc, cystfibr)
+summary(lm.obj2)
+```
+
+1)  The F-statistic increased to 4.947 which resulted in a much smaller p-value (0.0037) indicating that it is much less likely that the null hypothesis, that the coefficients of every predictor is zero, is true. This provides strong evidence that at least one of the predictors has a linear effect on the response and a non-zero coefficient.
+
+2) The coefficients for weight, bmp, and fev1 became statistically significant. Weight became very significant after removing the collinear variables age and height. Additionally, the standard error decreased 5 fold since the effect of this variable on the response became much more certain.  Rv became more significant with half of the standard error after removing frc but it did not come close to statistical significance. Interestingly, two variables (fev1 and bmp) that were not extremely correlated with the variables removed gained statistical significance in the reduced model. 
+
+
+**(c)**
+```{r message=FALSE}
+# From this first vif analysis the largest factor is weight so
+# this will be dropped first.
+vif(lm.obj)
+
+lm.obj2 <- lm(pemax~.-weight, cystfibr)
+
+# From this second vif analysis the largest factor is frc so
+# this will be dropped next.
+vif(lm.obj2)
+
+lm.obj3 <- lm(pemax~.-weight-frc, cystfibr)
+
+# From this third vif analysis the largest factor is height so
+# this will be dropped next.
+vif(lm.obj3)
+
+lm.obj4 <- lm(pemax~.-weight-frc-height, cystfibr)
+
+# All factors are now less than 5 so the final model will contain
+# these predictors
+vif(lm.obj4)
+
+summary(lm.obj4)
+```
+
+1) The F-statistic had a value of 3.99 leading to a p-value of 0.01 which is statistically significant suggesting that at least one explanatory variable has a linear effect on the response and a non-zero coefficient.
+
+2) The age variable become statistically significant in the reduced model and the standard error decreased 4 fold. Fev1 became statistically signigicant as well.  Less variables gained statistical significance using this method than the previous one.
+
+
+**(d)**
+
+Collinearity prevents us from accurately estimating the effects of predictors because it becomes difficult to discern which of the correlated predictors is responsible for the effect on the response. Since they would move together, any change in the response would be difficult to attribute to one or the other.
+
+
+## Part 2
+
+```{r message=FALSE}
+full.lm.obj <- lm(pemax~sex+weight+height+rv+frc, cystfibr)
+red.lm.obj <- lm(pemax~sex+height+frc)
+
+summary(full.lm.obj)
+summary(red.lm.obj)
+```
+
+
+**(a)** The standard errors for both of these coefficients are halved in the reduced model. This is because the reduced model is more certain of the effect of height and frc when the collinear confounding variables are removed. Looking at the VIF analysis we can observe that less of the variance of the height and frc variables is explained by the other variables in the reduced model.
+
+```{r message=FALSE}
+# VIF of height on full model
+s.h.full <- summary(lm(formula = height ~ sex + weight + rv + frc, data = cystfibr))
+1/(1-s.h.full$r.squared)
+
+# VIF of height on reduced model
+s.h.red <- summary(lm(formula = height ~ sex + frc, data = cystfibr))
+1/(1-s.h.red$r.squared)
+
+
+# VIF of frc on full model
+s.f.full <- summary(lm(formula = frc ~ sex + weight + rv + height, data = cystfibr))
+1/(1-s.f.full$r.squared)
+
+# VIF of frc on reduced model
+s.f.red <- summary(lm(formula = frc ~ sex + height, data = cystfibr))
+1/(1-s.f.red$r.squared)
+```
+
+
+
+**(b)**
+
+```{r message=FALSE}
+# VIF of full model
+vif(full.lm.obj)
+
+# From the VIF analysis of the full model, the first variable
+# to remove is weight
+red.lm.obj.1 <- lm(pemax~sex+height+rv+frc, cystfibr)
+vif(red.lm.obj.1)
+
+# From the VIF analysis of the first reduced model, the next 
+# variable to remove is frc
+red.lm.obj.1 <- lm(pemax~sex+height+rv+frc, cystfibr)
+vif(red.lm.obj.1)
+```
+
+According to this VIF analysis the first variable to be eliminated is weight because if has the highest value > 5. Performing VIF analysis on the first reduced model shows that frc would actually be the next variable to eliminate since it has the highest value above 5. This would not recreate the reduced model the was originally suggested, however, rv also has a value above 5.
+
+# Problem 2
+
+```{r message=FALSE}
+library(ISLR)
+attach(Auto)
+
+lm.obj <- lm(mpg~.-name, Auto)
+
+# The step function performs variable selection via backwards AIC 
+step(lm.obj)
+```
+
+***The only variable that was dropped from the model was acceleration***
+
+**Part 1**
+
+"Df" indicates the degrees of freedom that are lost from the model due to the parameters that are dropped. This is one in all cases because one less coefficient is being estimated.
+
+The sum of squares is the amount that the sum of squared error will increase after removing the specified variable. This happens because the model becomes less flexible.
+
+"RSS" indicates the value of the residuals sum of squares after removing the specified variable.
+
+"AIC" is the value of the information criterion which is the error of the fitted model plus the number of parameters. This measure gives a penalty for having more parameters in the model.
+
+
+**Part 2**
+
+The algorithm stopped because the model that contained all of the variables that remained from the last iteration resulted in the lowest AIC score. Removing any other variable will increase the RSS and AIC.
+
+**Part 3**
+
+\begin{align*}
+\hat{mpg}_i=& -15.563 - 0.507cylinders_i+ 0.019displacement_i - 0.024 horsepower_i\\
+&- 0.006 weight_i + 0.748year_i + 1.428origin_i
+\end{align*}
+
+# Problem 3
+
+```{r message=FALSE}
+attach(Wage)
+
+lm.obj <- lm(wage~age+race, Wage)
+summary(lm.obj)
+```
+
+## Part 1
+
+**(a)**
+
+In the following formula Black, Asian, and Other can only take on values of 0 or 1 indicating whether or not the individual belongs to that category.
+
+$$wage_i = \beta_0 + \beta_1age + \beta_2Black_i + \beta_3Asian_i + \beta_4Other_i + \epsilon_i$$
+
+
+**(b)**
+$$\hat{wage}_i = 82.417 + 0.711age_i - 11.793Black_i + 8.133Asian_i - 19.254Other_i$$
+
+**(c)**
+
+All of the dummy variables showed statistical significance at the $\alpha=0.05$ level but the most significant variable is the one indicating whether or not the person was black.
+
+**(d)**
+For people of the same age who are not also Asian or a race categorized as "Other", those who are black make $11.793 \cdot \$1000 = \$11,793$ less than those who are not black, not Asian nor one of the races classified as Other. Since the category not included in the model is white, this indicates that for people of the same age those who are black and not Asian or member of a race categorized as other make \$11,793 less than people that are white and not Asian or part of a race categorized as other. This is averaged across all people who are black, the same age, and who are not Asian or a race categorized as other.
+
+## Part 2
+
+This is not a preferable way to deal with categorical variables because it implies that the categories are ordinal, but this would not be correct if category 3 was not a higher class than category two or category 1. This makes the model difficult to properly interpret.

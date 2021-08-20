@@ -1,0 +1,310 @@
+---
+title: "Homework 11"
+author: "Miles Tweed"
+date: "3/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+library(cowplot)
+library(RColorBrewer)
+```
+
+# Problem 1
+```{r include=FALSE}
+crab <- read_csv("../../Data/crab.csv")
+head(crab)
+summary(crab)
+crab <- crab %>% mutate(sat=satellite>0)
+crab <- crab %>% mutate(
+  color1 = fct_recode(factor(color),"medium"="1", "medium"="2", "medium"="3", "dark"="4"),
+  weight = weight/1000
+  )
+crab
+```
+
+
+**Part a.**
+Fitting the logistic regression model with width:
+```{r}
+log.model.width <- glm(sat~width, data=crab, family = binomial(link = "logit"))
+summary(log.model.width)
+
+print(paste0("Increase in odds: ",exp(0.4972)))
+```
+Width has a positive effect on the likelihood of a female horseshoe crab having a satellite. An increase of one unit of width increases the log odds of satellite by 0.4972 which increases the odds of a satellite by 1.64.
+
+```{r}
+width.new <- seq(from = min(crab$width), to=max(crab$width), length.out=100)
+plotdata <- tibble(
+  width = width.new, 
+  log.odds = predict(log.model.width, newdata=data.frame(width=width.new), type="link"),
+  odds = exp(log.odds),
+  prob = odds/(1+odds)
+)
+predictions <- predict(log.model.width, newdata=data.frame(width=width.new), type="link", se.fit=TRUE)
+se.log.odds <- predictions$se.fit
+plotdata <- plotdata %>% mutate(
+  log.odds.LB = log.odds - 1.96*se.log.odds,
+  log.odds.UB = log.odds + 1.96*se.log.odds
+)
+plotdata <- plotdata %>% mutate(
+  odds.LB = exp(log.odds.LB),
+  odds.UB = exp(log.odds.UB),
+  prob.LB = odds.LB/(1+odds.LB),
+  prob.UB = odds.UB/(1+odds.UB)
+)
+
+prob.plot.width <- 
+ggplot(plotdata, aes(x=width, y=prob)) + 
+  geom_line(color="blue", size=1) + 
+  theme_bw() + 
+  labs(title = "Probability of Having a Satellite",
+      subtitle = "for a given carapace width",
+      x = "Width",
+      y = "Probability")
+
+prob.plot.width
+
+prob.plot.width + 
+  geom_ribbon(aes(ymin=prob.LB, ymax=prob.UB), fill="blue", alpha=0.1)
+```
+
+
+**Part b.**
+```{r}
+log.model.width.color <- glm(sat~width+color1, data=crab, family = binomial())
+summary(log.model.width.color)
+print(paste("Change in odds: ", exp(0.478)))
+```
+The addition of color, which had a negative effect, did not change the effect of width on the likelihood of having a satellite. This model predicts that an increase of one unit of width will increase the odds of having a satellite by 1.61 (as opposed to 1.64 in the previous model). In the plot of probability we would expect that the likelihood will increase with width but that the darker crabs will have a lower likelihood overall.
+
+```{r}
+# These plots are totally different from yours...they are blue
+mygrid <- expand.grid(width = width.new, color1 = levels(crab$color1))
+
+predictions <- predict(log.model.width.color, newdata=mygrid, type="link", se.fit=TRUE)
+
+plotdata <- tibble(
+  width = mygrid$width,
+  color1 = mygrid$color1,
+  log.odds = predictions$fit,
+  log.odds.LB = log.odds - 1.96*predictions$se.fit,
+  log.odds.UB = log.odds + 1.96*predictions$se.fit,
+  prob = exp(log.odds)/(1+exp(log.odds)),
+  prob.LB = exp(log.odds.LB)/(1+exp(log.odds.LB)),
+  prob.UB = exp(log.odds.UB)/(1+exp(log.odds.UB))
+)
+
+mycol <- brewer.pal(8, "BuPu")[c(3,5)]
+
+ggplot(data=plotdata, aes(x=width, y=log.odds, color=color1)) + 
+  geom_line(size=1) +
+  geom_ribbon(aes(ymin=log.odds.LB, ymax=log.odds.UB, fill=color1), color=NA, alpha=0.1) +
+  scale_color_manual(values = mycol, name="Color:") +
+  scale_fill_manual(values = mycol, name="Color:") +
+  theme_bw() + 
+  theme(legend.position = "top") +
+  labs(title="Female Horseshoe Crab Mating", x="Crab Width", y="Log-odds of Satellite")
+
+ggplot(data=plotdata, aes(x=width, y=prob, color=color1)) + 
+  geom_line(size=1) +
+  geom_ribbon(aes(ymin=prob.LB, ymax=prob.UB, fill=color1), color=NA, alpha=0.1) +
+  scale_color_manual(values = mycol, name="Color:") +
+  scale_fill_manual(values = mycol, name="Color:") +
+  theme_bw() + 
+  theme(legend.position = "top") +
+  labs(title="Female Horseshoe Crab Mating", x="Crab Width", y="Probability of Satellite")
+```
+
+**Part c.**
+
+Lighter colored crabs had increased probabilities of having a satellite than darker colored ones overall, but this effect was less significant among small (low width) crabs as well as for very large crabs. The effect of width seems to be the largest for average sized crabs. Those with width of 25 units were approximately 30% more likely to have a satellite if they were lightly colored than if they were dark.
+
+**Part d.**
+```{r}
+log.model.widthXcolor <- glm(sat~width*color1, data=crab, family = binomial())
+summary(log.model.widthXcolor)
+
+predictions2 <- predict(log.model.widthXcolor, newdata=mygrid, type="link", se.fit=TRUE)
+
+plotdata2 <- tibble(
+  width = mygrid$width,
+  color1 = mygrid$color1,
+  log.odds = predictions2$fit,
+  log.odds.LB = log.odds - 1.96*predictions2$se.fit,
+  log.odds.UB = log.odds + 1.96*predictions2$se.fit,
+  prob = exp(log.odds)/(1+exp(log.odds)),
+  prob.LB = exp(log.odds.LB)/(1+exp(log.odds.LB)),
+  prob.UB = exp(log.odds.UB)/(1+exp(log.odds.UB))
+)
+
+ggplot(data=plotdata2, aes(x=width, y=log.odds, color=color1)) + 
+  geom_line(size=1) +
+  geom_ribbon(aes(ymin=log.odds.LB, ymax=log.odds.UB, fill=color1), color=NA, alpha=0.1) +
+  scale_color_manual(values = mycol, name="Color:") +
+  scale_fill_manual(values = mycol, name="Color:") +
+  theme_bw() + 
+  theme(legend.position = "top") +
+  labs(title="Female Horseshoe Crab Mating", x="Crab Width", y="Log-odds of Satellite")
+
+ggplot(data=plotdata2, aes(x=width, y=prob, color=color1)) + 
+  geom_line(size=1) +
+  geom_ribbon(aes(ymin=prob.LB, ymax=prob.UB, fill=color1), color=NA, alpha=0.1) +
+  scale_color_manual(values = mycol, name="Color:") +
+  scale_fill_manual(values = mycol, name="Color:") +
+  theme_bw() + 
+  theme(legend.position = "top") +
+  labs(title="Female Horseshoe Crab Mating", x="Crab Width", y="Probability of Satellite")
+```
+
+The inclusion of interaction terms did not effect the likelihood for lighter colored crabs much but it increased the uncertainty for the darker crabs immensely.
+
+# Problem 2
+```{r warning=FALSE}
+Stroke <- read.csv('../../Data/healthcare-dataset-stroke-data.csv')
+Stroke[,'bmi'] <- as.numeric(Stroke$bmi)
+head(Stroke)
+```
+
+**Part a.**
+```{r}
+# Looking at the distribution of smoking status for only those who had a stroke.
+bar.one.cat.df <- 
+  Stroke %>% 
+  mutate(smoking_status = fct_recode(smoking_status,
+              "Smokes" = "smokes", 
+              "Formerly Smoked" = "formerly smoked", 
+              "Never Smoked" = "never smoked", 
+              "Unknown" = "Unknown")) %>% 
+  filter(stroke==TRUE) %>% 
+  count(smoking_status)  %>% 
+  mutate(percent=100*n/sum(n)) %>% 
+  mutate(smoking_status = fct_relevel(smoking_status,
+              "Smokes", 
+              "Formerly Smoked", 
+              "Never Smoked", 
+              "Unknown"))
+
+bar.one.cat.df
+
+fig1 <- 
+plot_ly(data=bar.one.cat.df,
+        type='bar',
+        x = ~smoking_status,
+        y = ~percent,
+        color = ~smoking_status,
+        showlegend = FALSE
+        ) %>% 
+  layout(
+    title = list(text="Smoking Status of Stroke Patients", xref="paper"),
+    xaxis = list(title="Smoking Status"),
+    yaxis = list(title = "Percent")
+  )
+fig1
+```
+
+**Part b.**
+```{r}
+# There was only one instance of 'Other' in gender so I removed it for this plot
+bar.two.cat.df <- Stroke %>% 
+  mutate(smoking_status = fct_recode(smoking_status,
+              "Smokes" = "smokes", 
+              "Formerly Smoked" = "formerly smoked", 
+              "Never Smoked" = "never smoked", 
+              "Unknown" = "Unknown"))%>% 
+  filter(gender != 'Other', stroke == TRUE) %>% 
+  count(smoking_status, gender) %>% 
+  mutate(percent=100*n/sum(n)) %>% 
+  mutate(smoking_status = fct_relevel(smoking_status,
+              "Smokes", 
+              "Formerly Smoked", 
+              "Never Smoked", 
+              "Unknown"))
+
+bar.two.cat.df
+
+fig2 <- 
+plot_ly(data=bar.two.cat.df,
+        type='bar',
+        x = ~smoking_status,
+        y = ~percent,
+        color = ~gender
+        ) %>% 
+  layout(
+    title = list(text = "Smoking Status By Gender for Stroke Patients", xref = "paper"),
+    xlabel = list(title = "Smoking Status"),
+    ylabel = list(title = "Percent")
+  )
+
+  
+fig2
+```
+
+**Part c.**
+```{r}
+fig2 <- 
+plot_ly(data=bar.two.cat.df,
+        type='bar',
+        y = ~smoking_status,
+        x = ~percent,
+        color = ~gender,
+        orientation = 'h'
+        ) %>% 
+  layout(
+    title = list(text = "Smoking Status By Gender for Stroke Patients", xref = "paper"),
+    ylabel = list(title = "Smoking Status"),
+    xlabel = list(title = "Percent")
+  )
+
+  
+fig2
+```
+
+**Part d.**
+```{r}
+plotdata.pie <- 
+Stroke %>% select(work_type) %>% count(work_type) %>% mutate(total = 100*n/sum(n))
+
+plot_ly(plotdata.pie, 
+        labels = ~work_type ,
+        values = ~total, 
+        type = 'pie') %>% 
+  layout(
+    title = list(text="Distribution Employment Type")
+  )
+```
+**Part e.**
+```{r}
+fig3 <- 
+plot_ly(data=Stroke,
+        type='histogram',
+        x = ~avg_glucose_level,
+        xbins = list(size = 10)
+        ) %>% 
+  layout(
+    title = list(text="Distribution of Average Glucose Level"),
+    xaxis = list(title = "Average Glucose Level"),
+    yaxis = list(title = "Frequency")
+  )
+fig3
+```
+
+**Part f.**
+```{r}
+bplotdata <- Stroke %>% select(bmi) %>% drop_na()
+bplotdata
+plot_ly(data=Stroke, 
+        x=~bmi,
+        y = "",
+        type='box',
+        hoverinfo = 'x') %>% 
+  layout(
+    title = list(text = "Distribution of BMI"),
+    xaxis = list(title = "BMI")
+  )
+```
+
